@@ -1,0 +1,17 @@
+{
+  "users": [
+    {"id":"u1","name":"Grâce Kalenga","role":"bailleur","phone":"+243 990 000 001","verified":true},
+    {"id":"u2","name":"Agence Horizon","role":"agence","phone":"+243 990 000 002","verified":true},
+    {"id":"u3","name":"Zack Mpete","role":"locataire","phone":"+243 990 000 003","verified":false}
+  ],
+  "houses": [
+    {"id":"h1","title":"Maison moderne à Golf","city":"Lubumbashi","commune":"Golf","price":850,"rooms":4,"type":"Villa","status":"Disponible","owner":"Grâce Kalenga","agency":"","image":"https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1200&auto=format&fit=crop","description":"Villa lumineuse avec jardin, parking et grande cuisine.","features":["Parking","Jardin","Sécurité","Eau courante"],"publishedAt":"2026-06-12"},
+    {"id":"h2","title":"Appartement centre-ville","city":"Lubumbashi","commune":"Centre-ville","price":500,"rooms":3,"type":"Appartement","status":"Disponible","owner":"Agence Horizon","agency":"Agence Horizon","image":"https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1200&auto=format&fit=crop","description":"Appartement propre proche des commerces et axes principaux.","features":["Balcon","Groupe électrogène","Internet","Gardien"],"publishedAt":"2026-06-10"},
+    {"id":"h3","title":"Studio meublé à Katuba","city":"Lubumbashi","commune":"Katuba","price":220,"rooms":1,"type":"Studio","status":"Réservé","owner":"Patrick Ilunga","agency":"","image":"https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=1200&auto=format&fit=crop","description":"Studio prêt à habiter, adapté aux étudiants et jeunes professionnels.","features":["Meublé","Douche interne","Compteur propre"],"publishedAt":"2026-06-08"},
+    {"id":"h4","title":"Maison familiale à Kenya","city":"Lubumbashi","commune":"Kenya","price":620,"rooms":5,"type":"Maison","status":"Disponible","owner":"Agence Horizon","agency":"Agence Horizon","image":"https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop","description":"Maison familiale avec dépendance et cour intérieure.","features":["Cour","Dépendance","Parking","Clôture"],"publishedAt":"2026-06-05"}
+  ],
+  "contracts": [
+    {"id":"c1","houseId":"h2","tenant":"Zack Mpete","owner":"Agence Horizon","startDate":"2026-07-01","duration":"12 mois","rent":500,"status":"Prêt à signer","seal":"BAIL-2026-LSH-001"}
+  ],
+  "stats": {"houses":4,"contracts":1,"users":3,"pendingRequests":7}
+}

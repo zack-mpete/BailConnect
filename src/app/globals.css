@@ -1,0 +1,21 @@
+@import "leaflet/dist/leaflet.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(circle at top left, rgba(6,182,212,.12), transparent 28%), #fbfaf7;
+  color: #101828;
+}
+::selection { background: #cffafe; }
+.glass { background: rgba(255,255,255,.76); backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,.55); }
+.contract-paper { background: linear-gradient(135deg, #fff 0%, #fffaf2 100%); }
+.seal { border: 2px dashed #b42318; color:#b42318; transform: rotate(-9deg); }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

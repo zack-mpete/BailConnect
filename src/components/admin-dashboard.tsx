@@ -1,0 +1,144 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Archive, BarChart3, FileSignature, Map, RefreshCw, Users } from "lucide-react";
+import toast from "react-hot-toast";
+import { AdminContracts } from "@/components/admin/admin-contracts";
+import { AdminOverview } from "@/components/admin/admin-overview";
+import { AdminPublications } from "@/components/admin/admin-publications";
+import { AdminUsers } from "@/components/admin/admin-users";
+import { DashboardMap } from "@/components/dashboard-map";
+import { useCurrentUser } from "@/lib/auth-client";
+import { supabase } from "@/lib/supabase";
+import type { AppData, AppUser, House, Role } from "@/types";
+
+type AdminSection = "overview" | "contracts" | "publications" | "users" | "map";
+
+const navigation: Array<{ id: AdminSection; label: string; description: string; Icon: typeof BarChart3 }> = [
+  { id: "overview", label: "Vue d'ensemble", description: "Indicateurs et activité récente", Icon: BarChart3 },
+  { id: "contracts", label: "Historique", description: "Contrats et signatures", Icon: FileSignature },
+  { id: "publications", label: "Publications", description: "Modération des annonces", Icon: Archive },
+  { id: "users", label: "Utilisateurs", description: "Comptes et rôles", Icon: Users },
+  { id: "map", label: "Map", description: "Biens et zones actives", Icon: Map }
+];
+
+async function getToken() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || null;
+}
+
+export function AdminDashboard({ initialData }: { initialData: AppData }) {
+  const { user } = useCurrentUser();
+  const [data, setData] = useState<AppData>(initialData);
+  const [section, setSection] = useState<AdminSection>("overview");
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (user?.role !== "admin") return;
+    const token = await getToken();
+    if (!token) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/dashboard", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || "Chargement admin impossible.");
+      setData(body);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Chargement admin impossible.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  async function updateHouse(house: House, action: "archive" | "restore" | "delete") {
+    const token = await getToken();
+    if (!token) return;
+
+    const res = await fetch(`/api/houses/${house.id}`, {
+      method: action === "delete" ? "DELETE" : "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: action === "delete" ? undefined : JSON.stringify({ action })
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(body?.error || "Action impossible.");
+      return;
+    }
+
+    toast.success(action === "delete" ? "Publication supprimée." : "Publication mise à jour.");
+    await refresh();
+  }
+
+  async function updateUserRole(appUser: AppUser, role: Role) {
+    const token = await getToken();
+    if (!token) return;
+
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ user_id: appUser.id, role })
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(body?.error || "Rôle impossible à modifier.");
+      return;
+    }
+
+    toast.success("Rôle utilisateur mis à jour.");
+    await refresh();
+  }
+
+  if (user?.role !== "admin") return null;
+
+  return (
+    <section className="rounded-2xl bg-slate-100 p-3">
+      <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
+        <aside className="rounded-2xl bg-ink p-4 text-white">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase text-white/50">Admin</p>
+              <h2 className="mt-1 text-xl font-black">Centre de contrôle</h2>
+            </div>
+            <button onClick={refresh} disabled={loading} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-50" aria-label="Actualiser">
+              <RefreshCw size={17} />
+            </button>
+          </div>
+          <nav className="mt-6 grid gap-2">
+            {navigation.map(({ id, label, description, Icon }) => (
+              <button key={id} onClick={() => setSection(id)} className={`flex items-center gap-3 rounded-2xl p-3 text-left transition ${section === id ? "bg-white text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${section === id ? "bg-brand-50 text-brand-700" : "bg-white/10"}`}><Icon size={18} /></span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black">{label}</span>
+                  <span className={`block text-xs ${section === id ? "text-slate-500" : "text-white/45"}`}>{description}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="min-w-0 rounded-2xl bg-slate-50 p-3 md:p-5">
+          {section === "overview" && <AdminOverview data={data} />}
+          {section === "contracts" && <AdminContracts contracts={data.contracts} />}
+          {section === "publications" && <AdminPublications houses={data.houses} onAction={updateHouse} />}
+          {section === "users" && <AdminUsers users={data.users} roles={data.roles} onRoleChange={updateUserRole} />}
+          {section === "map" && <DashboardMap houses={data.houses} title="Vue map plateforme" subtitle="Répartition des annonces, statuts et zones actives." />}
+        </div>
+      </div>
+    </section>
+  );
+}
