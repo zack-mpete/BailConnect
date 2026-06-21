@@ -51,6 +51,22 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 L'app utilise uniquement les clés publiques Supabase. Les actions protégées passent par Supabase Auth et les politiques RLS.
 
+Le fichier `.env` / `.env.local` ne doit pas être commit. Il est couvert par `.gitignore`.
+
+## Structure base de données
+
+Le schéma Supabase canonique est dans :
+
+```txt
+supabase-schema.sql
+```
+
+Une vue lisible des tables, relations, policies et workflows est disponible ici :
+
+```txt
+docs/database-structure.md
+```
+
 ## Pages incluses
 
 | Page | Route | Statut |
