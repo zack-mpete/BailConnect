@@ -50,8 +50,6 @@ type ContractRow = {
   seal_code: string;
   agreed_by_owner_at?: string | null;
   agreed_by_tenant_at?: string | null;
-  signed_by_owner_at?: string | null;
-  signed_by_tenant_at?: string | null;
 };
 
 const fallbackImage =
@@ -136,17 +134,8 @@ function toContract(row: ContractRow, usersById: Map<string, AppUser>): Contract
     status: row.status,
     seal: row.seal_code,
     agreedByOwnerAt: row.agreed_by_owner_at || null,
-    agreedByTenantAt: row.agreed_by_tenant_at || null,
-    signedByOwnerAt: row.signed_by_owner_at || null,
-    signedByTenantAt: row.signed_by_tenant_at || null
+    agreedByTenantAt: row.agreed_by_tenant_at || null
   };
-}
-
-async function countRows(table: string) {
-  const client = createPublicSupabaseClient();
-  if (!client) return 0;
-  const { count } = await client.from(table).select("*", { count: "exact", head: true });
-  return count || 0;
 }
 
 export async function getAppData(): Promise<AppData> {
@@ -163,15 +152,14 @@ export async function getAppData(): Promise<AppData> {
     client.from("role").select("id,name,label,description").order("label"),
     client.from("users").select("id,role_id,full_name,email,phone,verified").order("created_at", { ascending: false }),
     client.from("houses").select("*").order("created_at", { ascending: false }),
-    client.from("contracts").select("*").order("created_at", { ascending: false }),
-    countRows("rental_requests")
+    client.from("contracts").select("*").order("created_at", { ascending: false })
   ]).catch(() => null);
 
   if (!results) {
     return getFallbackData();
   }
 
-  const [rolesResult, usersResult, housesResult, contractsResult, requestsCount] = results;
+  const [rolesResult, usersResult, housesResult, contractsResult] = results;
 
   if (housesResult.error || rolesResult.error) {
     return getFallbackData();
@@ -192,8 +180,7 @@ export async function getAppData(): Promise<AppData> {
     stats: {
       houses: houses.length,
       contracts: contracts.length,
-      users: users.length,
-      pendingRequests: requestsCount
+      users: users.length
     }
   };
 }

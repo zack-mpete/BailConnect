@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, Badge } from "@/components/ui";
-import { Building2, FileSignature, Users, Bell } from "lucide-react";
+import { Building2, FileSignature, Users } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth-client";
 import type { AppData } from "@/types";
 
@@ -12,13 +12,12 @@ export function DashboardContent({ data }: { data: AppData }) {
   const allCards = [
     ["Maisons", data.stats.houses, Building2],
     ["Contrats", data.stats.contracts, FileSignature],
-    ["Utilisateurs", data.stats.users, Users],
-    ["Demandes", data.stats.pendingRequests, Bell]
+    ["Utilisateurs", data.stats.users, Users]
   ] as const;
 
   const cards = allCards.filter(([label]) => {
     if (user?.role === "bailleur" || user?.role === "agence") return label !== "Utilisateurs";
-    return label === "Contrats" || label === "Demandes";
+    return label === "Contrats";
   });
   const showListings = user?.role === "bailleur" || user?.role === "agence";
 

@@ -30,6 +30,17 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, clientOptions)
   : null;
 
+export async function getSupabaseAccessToken() {
+  if (!supabase) return null;
+
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 export function createPublicSupabaseClient(accessToken?: string) {
   if (!isSupabaseConfigured) return null;
 

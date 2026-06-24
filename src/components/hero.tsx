@@ -4,7 +4,7 @@ import { Button } from "@/components/ui";
 
 const highlights: Array<{ Icon: LucideIcon; label: string }> = [
   { Icon: Home, label: "Biens vérifiables" },
-  { Icon: FileSignature, label: "Bail numérique" },
+  { Icon: FileSignature, label: "Bail validé" },
   { Icon: ShieldCheck, label: "Traçabilité Supabase" }
 ];
 
@@ -14,8 +14,8 @@ export function Hero() {
       <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.05fr_.95fr] md:items-center">
         <div>
           <div className="mb-4 inline-flex rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">Plateforme de location immobilière transparente</div>
-          <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">Trouver, louer et signer un bail depuis une seule interface.</h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-muted md:text-lg">LeaseHub RDC combine un fil d'actualité immobilier mobile-first, des dashboards par rôle et des contrats de bail numériques avec sceau visuel.</p>
+          <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">Trouver, louer et valider un bail depuis une seule interface.</h1>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-muted md:text-lg">LeaseHub RDC combine un fil d'actualité immobilier mobile-first, des dashboards par rôle et des contrats de bail avec accord des parties.</p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button href="/search" className="bg-ink text-white">Chercher une maison <ArrowRight size={17} /></Button>
             <Button href="/add-house" className="bg-white text-ink shadow-card">Publier un bien</Button>

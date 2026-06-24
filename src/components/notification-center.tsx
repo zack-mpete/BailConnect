@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth-client";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAccessToken } from "@/lib/supabase";
 
 type NotificationRow = {
   id: string;
@@ -15,22 +15,50 @@ type NotificationRow = {
   created_at: string;
 };
 
-async function getToken() {
-  if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token || null;
-}
-
 export function NotificationCenter() {
   const { user } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
+  const [notificationsAvailable, setNotificationsAvailable] = useState(true);
+  const knownNotificationIds = useRef<Set<string>>(new Set());
+  const initialLoadDone = useRef(false);
+  const lastSoundAt = useRef(0);
 
   const unreadCount = useMemo(() => notifications.filter(item => !item.read_at).length, [notifications]);
 
+  const playNotificationSound = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSoundAt.current < 1500) return;
+    lastSoundAt.current = now;
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      const context = new AudioContextClass();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, context.currentTime);
+      oscillator.frequency.setValueAtTime(660, context.currentTime + 0.11);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.28);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.3);
+      window.setTimeout(() => context.close().catch(() => undefined), 450);
+    } catch {
+      // Browsers can block audio until the user interacts with the page.
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
-    if (!user) return;
-    const token = await getToken();
+    if (!user || !notificationsAvailable) return;
+    const token = await getSupabaseAccessToken();
     if (!token) return;
 
     const res = await fetch("/api/notifications", {
@@ -39,20 +67,53 @@ export function NotificationCenter() {
     });
     if (!res.ok) return;
     const body = await res.json().catch(() => null);
-    setNotifications(body?.notifications || []);
-  }, [user]);
+    if (body?.notifications_available === false) {
+      setNotifications([]);
+      setNotificationsAvailable(false);
+      return;
+    }
+    const nextNotifications = (body?.notifications || []) as NotificationRow[];
+    const hasNewUnread = nextNotifications.some(item => !item.read_at && !knownNotificationIds.current.has(item.id));
+    knownNotificationIds.current = new Set(nextNotifications.map(item => item.id));
+    if (initialLoadDone.current && hasNewUnread) playNotificationSound();
+    initialLoadDone.current = true;
+    setNotifications(nextNotifications);
+  }, [notificationsAvailable, playNotificationSound, user]);
 
   useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setNotificationsAvailable(true);
+      knownNotificationIds.current = new Set();
+      initialLoadDone.current = false;
+      return;
+    }
+
+    if (!notificationsAvailable) return;
+
     refresh();
     const timer = window.setInterval(refresh, 30000);
     return () => window.clearInterval(timer);
-  }, [refresh]);
+  }, [notificationsAvailable, refresh, user]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type !== "leasehub-notification") return;
+      playNotificationSound();
+      refresh();
+    }
+
+    navigator.serviceWorker.addEventListener("message", handleMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", handleMessage);
+  }, [playNotificationSound, refresh]);
 
   async function markRead(id: string) {
-    const token = await getToken();
+    const token = await getSupabaseAccessToken();
     if (!token) return;
     setNotifications(current => current.map(item => item.id === id ? { ...item, read_at: new Date().toISOString() } : item));
-    await fetch("/api/notifications", {
+    const res = await fetch("/api/notifications", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -60,6 +121,8 @@ export function NotificationCenter() {
       },
       body: JSON.stringify({ notification_id: id })
     });
+    const body = await res.json().catch(() => null);
+    if (body?.notifications_available === false) setNotificationsAvailable(false);
   }
 
   if (!user) return null;

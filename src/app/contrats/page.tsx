@@ -15,7 +15,7 @@ export default async function ContractsPage({ searchParams }: { searchParams: Pr
       <section className="mx-auto max-w-7xl px-4 py-8 md:px-6">
         <RoleGate allow={["admin", "bailleur", "agence", "locataire"]} fallbackText="Connecte-toi pour préparer ou consulter un contrat.">
           <div className="mb-6">
-            <h1 className="text-3xl font-black">Contrat de bail numérique</h1>
+            <h1 className="text-3xl font-black">Contrat de bail</h1>
             <p className="mt-2 text-muted">Contrat généré depuis les informations enregistrées dans la plateforme.</p>
           </div>
           <ContractWorkspace house={house} contract={contract} />

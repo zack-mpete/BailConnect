@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "LeaseHub RDC - Location immobilière",
-  description: "Plateforme Next.js pour publier, chercher et signer des contrats de bail numériques.",
+  description: "Plateforme Next.js pour publier, chercher et valider des contrats de bail.",
   icons: {
     icon: "/icon.svg"
   }

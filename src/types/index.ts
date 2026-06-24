@@ -52,8 +52,6 @@ export type Contract = {
   seal: string;
   agreedByOwnerAt?: string | null;
   agreedByTenantAt?: string | null;
-  signedByOwnerAt?: string | null;
-  signedByTenantAt?: string | null;
 };
 
 export type AppData = {
@@ -61,5 +59,5 @@ export type AppData = {
   roles: AppRole[];
   houses: House[];
   contracts: Contract[];
-  stats: { houses: number; contracts: number; users: number; pendingRequests: number };
+  stats: { houses: number; contracts: number; users: number };
 };

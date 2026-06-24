@@ -13,7 +13,7 @@ export function AdminContracts({ contracts }: { contracts: Contract[] }) {
           <FileSignature className="text-brand-600" size={20} />
           <div>
             <h2 className="text-xl font-black">Historique des contrats</h2>
-            <p className="text-sm text-muted">Tous les contrats créés et signés sur la plateforme.</p>
+            <p className="text-sm text-muted">Tous les contrats créés et validés sur la plateforme.</p>
           </div>
         </div>
         <Badge>{contracts.length} contrats</Badge>
@@ -27,7 +27,6 @@ export function AdminContracts({ contracts }: { contracts: Contract[] }) {
               <th className="px-3 py-2">Locataire</th>
               <th className="px-3 py-2">Loyer</th>
               <th className="px-3 py-2">Accords</th>
-              <th className="px-3 py-2">Signatures</th>
               <th className="px-3 py-2">Statut</th>
               <th className="px-3 py-2">Détails</th>
             </tr>
@@ -43,11 +42,7 @@ export function AdminContracts({ contracts }: { contracts: Contract[] }) {
                   <p>Bailleur : {contract.agreedByOwnerAt ? "validé" : "en attente"}</p>
                   <p>Locataire : {contract.agreedByTenantAt ? "validé" : "en attente"}</p>
                 </td>
-                <td className="px-3 py-3 text-xs leading-5">
-                  <p>Bailleur : {contract.signedByOwnerAt ? "signé" : "non signé"}</p>
-                  <p>Locataire : {contract.signedByTenantAt ? "signé" : "non signé"}</p>
-                </td>
-                <td className="px-3 py-3"><Badge tone={["signe", "signé"].includes(contract.status) ? "success" : "default"}>{contract.status}</Badge></td>
+                <td className="px-3 py-3"><Badge tone={contract.agreedByOwnerAt && contract.agreedByTenantAt ? "success" : "default"}>{contract.status}</Badge></td>
                 <td className="px-3 py-3">
                   <details>
                     <summary className="inline-flex cursor-pointer items-center gap-1 font-bold text-brand-700"><Eye size={15} /> Ouvrir</summary>

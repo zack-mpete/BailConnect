@@ -1,5 +1,4 @@
 import { Navbar } from "@/components/navbar";
-import { ContractCta } from "@/components/contract-cta";
 import { Badge, Card } from "@/components/ui";
 import { getHouse } from "@/lib/data";
 import { money } from "@/lib/utils";
@@ -24,7 +23,6 @@ export default async function HouseDetail({ params }: { params: Promise<{ id: st
             <p className="leading-7 text-slate-600">{house.description}</p>
             <div className="flex flex-wrap gap-2">{house.features.map(f => <span key={f} className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold">{f}</span>)}</div>
             <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-900"><b>Vision future :</b> une visite 3D sera ajoutée plus tard à partir de modèles .glb ou scans optimisés.</div>
-            <ContractCta houseId={house.id} />
           </Card>
         </div>
       </section>

@@ -10,7 +10,7 @@ const roleCopy = {
   },
   bailleur: {
     title: "Espace bailleur",
-    items: ["Mes biens publiés", "Demandes reçues", "Contrats à signer"]
+    items: ["Mes biens publiés", "Demandes reçues", "Contrats à valider"]
   },
   agence: {
     title: "Espace agence",

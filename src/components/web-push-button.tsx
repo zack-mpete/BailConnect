@@ -2,7 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth-client";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAccessToken, supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -62,8 +62,7 @@ export function WebPushButton() {
       return;
     }
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
+    const token = await getSupabaseAccessToken();
     if (!token) {
       toast.error("Connecte-toi avant d'activer les notifications.");
       return;

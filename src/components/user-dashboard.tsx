@@ -25,7 +25,7 @@ const roleMeta: Record<Exclude<Role, "admin">, { title: string; label: string; n
       { id: "overview", label: "Vue d'ensemble", description: "Revenus, biens et alertes", Icon: BarChart3 },
       { id: "payments", label: "Paiements", description: "Loyers, retards et relances", Icon: WalletCards },
       { id: "properties", label: "Possessions", description: "Statuts des biens", Icon: Home },
-      { id: "contracts", label: "Contrats", description: "Baux et signatures", Icon: FileSignature },
+      { id: "contracts", label: "Contrats", description: "Baux et accords", Icon: FileSignature },
       { id: "map", label: "Map", description: "Carte du portefeuille", Icon: Map }
     ]
   },
@@ -47,15 +47,15 @@ const roleMeta: Record<Exclude<Role, "admin">, { title: string; label: string; n
       { id: "overview", label: "Vue d'ensemble", description: "Dossier et prochaines actions", Icon: BarChart3 },
       { id: "payments", label: "Mes paiements", description: "Loyer et échéances", Icon: WalletCards },
       { id: "properties", label: "Recherche", description: "Biens disponibles", Icon: Search },
-      { id: "contracts", label: "Mes contrats", description: "Baux et signatures", Icon: FileSignature },
+      { id: "contracts", label: "Mes contrats", description: "Baux et accords", Icon: FileSignature },
       { id: "map", label: "Map", description: "Biens autour de moi", Icon: Map }
     ]
   }
 };
 
 function contractPaymentState(contract: Contract, index: number) {
-  const isSigned = Boolean(contract.signedByOwnerAt && contract.signedByTenantAt) || ["signe", "signé"].includes(contract.status);
-  if (!isSigned) return { label: "En attente", tone: "default" as const, due: "Après signature" };
+  const isAgreed = Boolean(contract.agreedByOwnerAt && contract.agreedByTenantAt) || contract.status === "pret_a_signer";
+  if (!isAgreed) return { label: "En attente", tone: "default" as const, due: "Après accord" };
   if (index % 5 === 0) return { label: "Retard", tone: "warn" as const, due: "Relance requise" };
   if (index % 4 === 0) return { label: "Partiel", tone: "warn" as const, due: "Solde à suivre" };
   return { label: "Payé", tone: "success" as const, due: "Mois courant" };
@@ -79,7 +79,7 @@ function filterData(data: AppData, role: Exclude<Role, "admin">, userId: string 
 }
 
 function SummaryCards({ role, houses, contracts }: { role: Exclude<Role, "admin">; houses: House[]; contracts: Contract[] }) {
-  const occupied = contracts.filter(contract => ["signe", "signé"].includes(contract.status) || contract.signedByTenantAt).length;
+  const occupied = contracts.filter(contract => contract.agreedByOwnerAt && contract.agreedByTenantAt).length;
   const late = contracts.filter((contract, index) => contractPaymentState(contract, index).label === "Retard").length;
   const monthly = contracts.reduce((sum, contract) => sum + contract.rent, 0);
   const available = houses.filter(house => house.status === "Disponible").length;
@@ -207,7 +207,7 @@ function ContractsView({ role, contracts }: { role: Exclude<Role, "admin">; cont
             </div>
             <div className="flex flex-wrap gap-2 md:justify-end">
               <Badge>{contract.status}</Badge>
-              <Badge tone={contract.signedByOwnerAt && contract.signedByTenantAt ? "success" : "warn"}>{contract.signedByOwnerAt && contract.signedByTenantAt ? "Signé" : "Signature en attente"}</Badge>
+              <Badge tone={contract.agreedByOwnerAt && contract.agreedByTenantAt ? "success" : "warn"}>{contract.agreedByOwnerAt && contract.agreedByTenantAt ? "Accord validé" : "Accord en attente"}</Badge>
             </div>
           </div>
         ))}
@@ -262,8 +262,8 @@ export function UserDashboard({ data }: { data: AppData }) {
                   </div>
                   <div className="mt-4 grid gap-3 text-sm">
                     {(role === "locataire"
-                      ? ["Compléter le dossier locatif", "Vérifier les signatures en attente", "Planifier une visite depuis la carte"]
-                      : ["Relancer les paiements en retard", "Mettre à jour les biens disponibles", "Vérifier les contrats non signés"]
+                      ? ["Compléter le dossier locatif", "Vérifier les accords en attente", "Planifier une visite depuis la carte"]
+                      : ["Relancer les paiements en retard", "Mettre à jour les biens disponibles", "Vérifier les contrats sans accord complet"]
                     ).map(item => <p key={item} className="rounded-xl bg-slate-50 p-3 font-semibold">{item}</p>)}
                   </div>
                 </div>

@@ -39,8 +39,6 @@ type ContractRow = {
   seal_code: string;
   agreed_by_owner_at?: string | null;
   agreed_by_tenant_at?: string | null;
-  signed_by_owner_at?: string | null;
-  signed_by_tenant_at?: string | null;
 };
 
 function userName(id: string, users: Map<string, AppUser>) {
@@ -141,9 +139,7 @@ export async function GET(req: NextRequest) {
     status: row.status,
     seal: row.seal_code,
     agreedByOwnerAt: row.agreed_by_owner_at || null,
-    agreedByTenantAt: row.agreed_by_tenant_at || null,
-    signedByOwnerAt: row.signed_by_owner_at || null,
-    signedByTenantAt: row.signed_by_tenant_at || null
+    agreedByTenantAt: row.agreed_by_tenant_at || null
   }));
 
   return NextResponse.json({
@@ -154,8 +150,7 @@ export async function GET(req: NextRequest) {
     stats: {
       houses: houses.length,
       contracts: contracts.length,
-      users: users.length,
-      pendingRequests: 0
+      users: users.length
     }
   });
 }

@@ -43,3 +43,8 @@ coverage/
 dist/
 tmp/
 temp/
+supabase/
+
+# Database schemas and migrations
+**/migrations/
+**/*schema*.sql

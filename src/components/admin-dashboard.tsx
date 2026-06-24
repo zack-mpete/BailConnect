@@ -9,24 +9,18 @@ import { AdminPublications } from "@/components/admin/admin-publications";
 import { AdminUsers } from "@/components/admin/admin-users";
 import { DashboardMap } from "@/components/dashboard-map";
 import { useCurrentUser } from "@/lib/auth-client";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAccessToken } from "@/lib/supabase";
 import type { AppData, AppUser, House, Role } from "@/types";
 
 type AdminSection = "overview" | "contracts" | "publications" | "users" | "map";
 
 const navigation: Array<{ id: AdminSection; label: string; description: string; Icon: typeof BarChart3 }> = [
   { id: "overview", label: "Vue d'ensemble", description: "Indicateurs et activité récente", Icon: BarChart3 },
-  { id: "contracts", label: "Historique", description: "Contrats et signatures", Icon: FileSignature },
+  { id: "contracts", label: "Historique", description: "Contrats et accords", Icon: FileSignature },
   { id: "publications", label: "Publications", description: "Modération des annonces", Icon: Archive },
   { id: "users", label: "Utilisateurs", description: "Comptes et rôles", Icon: Users },
   { id: "map", label: "Map", description: "Biens et zones actives", Icon: Map }
 ];
-
-async function getToken() {
-  if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token || null;
-}
 
 export function AdminDashboard({ initialData }: { initialData: AppData }) {
   const { user } = useCurrentUser();
@@ -36,7 +30,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
 
   const refresh = useCallback(async () => {
     if (user?.role !== "admin") return;
-    const token = await getToken();
+    const token = await getSupabaseAccessToken();
     if (!token) return;
 
     setLoading(true);
@@ -60,7 +54,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
   }, [refresh]);
 
   async function updateHouse(house: House, action: "archive" | "restore" | "delete") {
-    const token = await getToken();
+    const token = await getSupabaseAccessToken();
     if (!token) return;
 
     const res = await fetch(`/api/houses/${house.id}`, {
@@ -82,7 +76,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
   }
 
   async function updateUserRole(appUser: AppUser, role: Role) {
-    const token = await getToken();
+    const token = await getSupabaseAccessToken();
     if (!token) return;
 
     const res = await fetch("/api/admin/users", {

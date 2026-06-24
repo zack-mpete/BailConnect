@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, CheckCircle2, Send } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Contract, House } from "@/types";
 import { useCurrentUser } from "@/lib/auth-client";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAccessToken, supabase } from "@/lib/supabase";
 import { money } from "@/lib/utils";
 
 type AgreementMessage = {
@@ -20,45 +21,35 @@ type ContractWorkspaceProps = {
   contract?: Contract | null;
 };
 
-type RentalRequest = {
-  id: string;
-  house_id: string;
-  tenant_id: string;
-  message: string | null;
-  status: string;
-  created_at: string;
-  tenant?: { full_name?: string; email?: string | null } | null;
-};
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
 export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
+  const router = useRouter();
   const { user } = useCurrentUser();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<AgreementMessage[]>([]);
   const [contractState, setContractState] = useState<Contract | null>(contract || null);
-  const [requests, setRequests] = useState<RentalRequest[]>([]);
   const storageKey = `leasehub-contract-chat-${house?.id || "default"}`;
 
   const landlordName = contractState?.owner || house?.owner || "[NOM DU BAILLEUR]";
   const tenantName = contractState?.tenant || user?.fullName || "[NOM DU LOCATAIRE]";
   const rentAmount = contractState ? money(contractState.rent) : house ? money(house.price) : "[MONTANT DU LOYER]";
   const contractDuration = contractState?.duration || "12 mois";
-  const signatureDate = contractState?.startDate || "[DATE DE SIGNATURE]";
+  const agreementDate = contractState?.startDate || "[DATE D'ACCORD]";
   const tenantAgreed = Boolean(contractState?.agreedByTenantAt);
   const landlordAgreed = Boolean(contractState?.agreedByOwnerAt);
-  const tenantSigned = Boolean(contractState?.signedByTenantAt);
-  const landlordSigned = Boolean(contractState?.signedByOwnerAt);
   const isLandlord = Boolean(user?.id && house?.ownerId && user.id === house.ownerId);
   const currentParty = isLandlord ? "bailleur" : "locataire";
-  const recipientUserIds = useMemo(() => {
-    const requestTenantIds = requests.map(request => request.tenant_id);
-    const ids = [house?.ownerId, contractState?.tenantId, user?.id, ...requestTenantIds].filter((id): id is string => Boolean(id));
-    return Array.from(new Set(ids));
-  }, [contractState?.tenantId, house?.ownerId, requests, user?.id]);
-  const pendingRequest = requests.find(request => request.house_id === house?.id && request.status === "en_attente") || null;
+  const canMarkAgreement = Boolean(
+    user &&
+    (
+      contractState
+        ? !(isLandlord ? landlordAgreed : tenantAgreed)
+        : house && !isLandlord
+    )
+  );
 
   useEffect(() => {
     const stored = window.localStorage.getItem(storageKey);
@@ -79,8 +70,7 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
     async function loadContract() {
       if (!supabase || !user || !house) return;
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const token = await getSupabaseAccessToken();
       if (!token) return;
 
       const res = await fetch(`/api/contracts?house=${house.id}`, {
@@ -89,78 +79,22 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
       });
       if (!res.ok) return;
 
-      const body = (await res.json()) as { contracts?: Contract[]; requests?: RentalRequest[] };
+      const body = (await res.json()) as { contracts?: Contract[] };
       if (body.contracts?.[0]) setContractState(body.contracts[0]);
-      setRequests(body.requests || []);
     }
 
     loadContract();
   }, [house, user]);
 
   async function getToken() {
-    if (!supabase) return null;
-    const { data: sessionData } = await supabase.auth.getSession();
-    return sessionData.session?.access_token || null;
-  }
-
-  async function notifyParties(text: string) {
-    const token = await getToken();
-    if (!token) return;
-
-    await fetch("/api/push/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        title: "Discussion contrat",
-        body: text,
-        url: `/contrats${house ? `?house=${house.id}` : ""}`,
-        recipientUserIds
-      })
-    });
+    return getSupabaseAccessToken();
   }
 
   async function ensureContract() {
     if (contractState) return contractState;
-    if (!user || !house) throw new Error("Contrat impossible à créer.");
-    throw new Error("Le bailleur doit d'abord approuver la demande de contrat.");
-  }
-
-  async function approveRequest() {
-    if (!user || !house || !pendingRequest || !isLandlord) return;
-
-    const token = await getToken();
-    if (!token) {
-      toast.error("Connexion requise.");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/contracts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          house_id: house.id,
-          request_id: pendingRequest.id,
-          start_date: new Date().toISOString().slice(0, 10),
-          duration_months: 12,
-          rent: house.price
-        })
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error || "Création du contrat impossible.");
-
-      setContractState(body.contract);
-      setRequests(current => current.map(request => request.id === pendingRequest.id ? { ...request, status: "approuvee" } : request));
-      toast.success("Demande approuvée. Le locataire est notifié.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Création du contrat impossible.");
-    }
+    if (!user || !house) throw new Error("Contrat indisponible.");
+    if (isLandlord) throw new Error("Le bailleur ne peut pas créer un contrat sans locataire.");
+    return null;
   }
 
   async function sendMessage() {
@@ -175,8 +109,33 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
     };
     setMessages(current => [...current, nextMessage]);
     setMessage("");
-    await notifyParties(`${user.fullName}: ${text}`);
-    toast.success("Message envoyé pour accord.");
+
+    const recipientUserId = isLandlord ? contractState?.tenantId : contractState?.ownerId || house?.ownerId;
+    const token = await getToken();
+    if (token && recipientUserId && recipientUserId !== user.id) {
+      await fetch("/api/push/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: "Message contrat",
+          body: `${user.fullName}: ${text}`,
+          url: `/contrats${house ? `?house=${house.id}` : ""}`,
+          type: "contract_message",
+          recipientUserIds: [recipientUserId],
+          metadata: {
+            house_id: house?.id,
+            contract_id: contractState?.id
+          }
+        })
+      });
+      toast.success("Message envoyé et notification envoyée.");
+      return;
+    }
+
+    toast.success("Message ajouté à la discussion.");
   }
 
   async function markAgreement() {
@@ -193,43 +152,17 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ contract_id: currentContract.id })
+        body: JSON.stringify(currentContract ? { contract_id: currentContract.id } : { house_id: house?.id })
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error || "Accord impossible à enregistrer.");
 
       setContractState(body.contract);
-      await notifyParties(`${user.fullName} a marqué son accord sur le contrat.`);
-      toast.success("Accord enregistré dans la base.");
+      toast.success(isLandlord ? "Accord enregistré." : "Accord enregistré et notification envoyée.");
+      router.push("/dashboard");
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Accord impossible à enregistrer.");
-    }
-  }
-
-  async function signContract() {
-    if (!user) return;
-
-    try {
-      const currentContract = await ensureContract();
-      const token = await getToken();
-      if (!token) throw new Error("Connexion requise.");
-
-      const res = await fetch("/api/contracts", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ contract_id: currentContract.id, action: "sign" })
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error || "Signature impossible à enregistrer.");
-
-      setContractState(body.contract);
-      await notifyParties(`${user.fullName} a signé numériquement le contrat.`);
-      toast.success("Signature enregistrée dans la base.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Signature impossible à enregistrer.");
     }
   }
 
@@ -253,25 +186,25 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
           <p className="font-semibold text-slate-950">Il a été convenu ce qui suit :</p>
           <p>Le Bailleur met à la disposition du Locataire un bien immobilier à usage d'habitation, conformément aux informations enregistrées dans la plateforme.</p>
           {house && <p>Bien concerné : <strong>{house.title}</strong>, situé à <strong>{house.commune}, {house.city}</strong>.</p>}
-          <p>Le présent contrat est conclu pour une durée de <strong>{contractDuration}</strong>, à compter de la date de signature numérique du présent contrat.</p>
+          <p>Le présent contrat est conclu pour une durée de <strong>{contractDuration}</strong>, à compter de la date d'accord enregistrée dans la plateforme.</p>
           <p>Le montant du loyer est fixé à <strong>{rentAmount}</strong>.</p>
           <p>Le Locataire s'engage à payer le loyer convenu selon les modalités acceptées entre les deux parties. Il s'engage également à utiliser le logement uniquement à des fins d'habitation, à maintenir le bien en bon état et à signaler au Bailleur tout problème important lié au logement.</p>
           <p>Le Bailleur s'engage à mettre le logement à la disposition du Locataire dans un état conforme à son usage, à respecter les informations publiées sur la plateforme et à garantir au Locataire une occupation paisible du logement pendant toute la durée du bail.</p>
           <p>Le Locataire ne peut pas sous-louer le logement sans autorisation préalable du Bailleur.</p>
           <p>Le présent contrat peut être renouvelé à son expiration par accord entre le Bailleur et le Locataire.</p>
           <p>Le présent contrat peut être résilié en cas de non-respect des obligations prévues par l'une des parties ou par accord commun entre le Bailleur et le Locataire.</p>
-          <p>La signature numérique du Bailleur et du Locataire vaut acceptation complète du présent contrat. Le sceau numérique apposé par la plateforme confirme la validation du contrat dans le système.</p>
+          <p>L'accord enregistré par le Bailleur et le Locataire vaut acceptation complète du présent contrat. Le sceau apposé par la plateforme confirme la validation du contrat dans le système.</p>
           <p>Le présent contrat est enregistré dans la plateforme afin d'assurer la transparence, la traçabilité et la conservation des engagements pris entre les deux parties.</p>
-          <p>Fait électroniquement via la plateforme, le <strong>{signatureDate}</strong>.</p>
+          <p>Fait électroniquement via la plateforme, le <strong>{agreementDate}</strong>.</p>
 
           <div className="grid gap-5 pt-4 md:grid-cols-2">
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5">
               <p><strong>Le Bailleur :</strong> {landlordName}</p>
-              <p className="mt-6">Signature : ______________________</p>
+              <p className="mt-6">Accord : {landlordAgreed ? `validé le ${formatDate(contractState!.agreedByOwnerAt!)}` : "en attente"}</p>
             </div>
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5">
               <p><strong>Le Locataire :</strong> {tenantName}</p>
-              <p className="mt-6">Signature : ______________________</p>
+              <p className="mt-6">Accord : {tenantAgreed ? `validé le ${formatDate(contractState!.agreedByTenantAt!)}` : "en attente"}</p>
             </div>
           </div>
 
@@ -286,22 +219,16 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-black">Accord sur le contrat</h2>
-            <p className="mt-1 text-sm text-muted">Discussion entre bailleur et locataire avec alerte Web Push.</p>
+            <p className="mt-1 text-sm text-muted">Discussion entre bailleur et locataire, puis validation par accord.</p>
           </div>
           <Bell className="text-brand-600" size={22} />
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
-          {pendingRequest && isLandlord && !contractState && (
-            <div className="col-span-2 rounded-2xl bg-amber-50 p-3 text-amber-900">
-              <p className="font-black">Demande en attente</p>
-              <p className="mt-1 text-xs">Le locataire {pendingRequest.tenant?.full_name || "intéressé"} souhaite recevoir un contrat pour ce bien.</p>
-            </div>
-          )}
-          {!contractState && !isLandlord && (
+          {!contractState && (
             <div className="col-span-2 rounded-2xl bg-slate-50 p-3 text-slate-700">
-              <p className="font-black">Contrat en attente</p>
-              <p className="mt-1 text-xs">Le bailleur doit approuver ta demande avant que le contrat soit disponible.</p>
+              <p className="font-black">Aucun contrat disponible</p>
+              <p className="mt-1 text-xs">Un contrat doit exister pour que les parties puissent confirmer leur accord.</p>
             </div>
           )}
           <div className="rounded-2xl bg-slate-50 p-3">
@@ -314,21 +241,6 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
             <p className="font-bold">Locataire</p>
             <p className={tenantAgreed ? "text-emerald-700" : "text-muted"}>
               {tenantAgreed ? `D'accord le ${formatDate(contractState!.agreedByTenantAt!)}` : "En attente"}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-2xl bg-slate-50 p-3">
-            <p className="font-bold">Signature bailleur</p>
-            <p className={landlordSigned ? "text-emerald-700" : "text-muted"}>
-              {landlordSigned ? `Signé le ${formatDate(contractState!.signedByOwnerAt!)}` : "Non signé"}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-slate-50 p-3">
-            <p className="font-bold">Signature locataire</p>
-            <p className={tenantSigned ? "text-emerald-700" : "text-muted"}>
-              {tenantSigned ? `Signé le ${formatDate(contractState!.signedByTenantAt!)}` : "Non signé"}
             </p>
           </div>
         </div>
@@ -358,19 +270,11 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
             placeholder="Écrire un message sur le loyer, la durée, la date de début..."
           />
           <div className="grid gap-2">
-            {pendingRequest && isLandlord && !contractState && (
-              <button onClick={approveRequest} disabled={!user} className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 disabled:opacity-50">
-                <CheckCircle2 size={16} /> Approuver la demande et créer le contrat
-              </button>
-            )}
             <button onClick={sendMessage} disabled={!user || !message.trim()} className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
-              <Send size={16} /> Envoyer et notifier
+              <Send size={16} /> Envoyer
             </button>
-            <button onClick={markAgreement} disabled={!user || !contractState || (isLandlord ? landlordAgreed : tenantAgreed)} className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700 disabled:opacity-50">
+            <button onClick={markAgreement} disabled={!canMarkAgreement} className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700 disabled:opacity-50">
               <CheckCircle2 size={16} /> Je suis d'accord comme {currentParty}
-            </button>
-            <button onClick={signContract} disabled={!user || !contractState || (isLandlord ? (!landlordAgreed || landlordSigned) : (!landlordAgreed || !tenantAgreed || tenantSigned))} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 disabled:opacity-50">
-              <CheckCircle2 size={16} /> Signer numériquement
             </button>
           </div>
         </div>

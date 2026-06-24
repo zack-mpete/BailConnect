@@ -4,10 +4,10 @@ import { Archive, FileSignature, Home, Users } from "lucide-react";
 import type { AppData } from "@/types";
 
 export function AdminOverview({ data }: { data: AppData }) {
-  const signedContracts = data.contracts.filter(contract => contract.signedByOwnerAt && contract.signedByTenantAt).length;
+  const agreedContracts = data.contracts.filter(contract => contract.agreedByOwnerAt && contract.agreedByTenantAt).length;
   const archivedHouses = data.houses.filter(house => house.status === "Archivé").length;
   const metrics = [
-    { label: "Contrats signés", value: signedContracts, Icon: FileSignature },
+    { label: "Contrats validés", value: agreedContracts, Icon: FileSignature },
     { label: "Contrats suivis", value: data.contracts.length, Icon: FileSignature },
     { label: "Publications", value: data.houses.length, Icon: Home },
     { label: "Utilisateurs", value: data.users.length, Icon: Users }
