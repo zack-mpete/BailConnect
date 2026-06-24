@@ -1,4 +1,4 @@
-# LeaseHub RDC — Plateforme Next.js de location immobilière
+# BailConnect - Plateforme Next.js de location immobilière
 
 Application MVP prête à développer pour :
 

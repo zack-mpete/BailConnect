@@ -4,7 +4,7 @@ import { AuthProvider } from "@/lib/auth-client";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LeaseHub RDC - Location immobilière",
+  title: "BailConnect - Location immobilière",
   description: "Plateforme Next.js pour publier, chercher et valider des contrats de bail.",
   icons: {
     icon: "/icon.svg"

@@ -31,7 +31,7 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<AgreementMessage[]>([]);
   const [contractState, setContractState] = useState<Contract | null>(contract || null);
-  const storageKey = `leasehub-contract-chat-${house?.id || "default"}`;
+  const storageKey = `bailconnect-contract-chat-${house?.id || "default"}`;
 
   const landlordName = contractState?.owner || house?.owner || "[NOM DU BAILLEUR]";
   const tenantName = contractState?.tenant || user?.fullName || "[NOM DU LOCATAIRE]";
@@ -170,7 +170,7 @@ export function ContractWorkspace({ house, contract }: ContractWorkspaceProps) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="contract-paper relative overflow-hidden rounded-xxl border border-white/70 bg-white p-8 shadow-card md:p-12">
         <div className="absolute right-6 top-6 flex h-28 w-28 items-center justify-center rounded-full bg-red-50 text-center text-xs font-black seal md:right-8 md:top-8 md:h-32 md:w-32 md:text-sm">
-          SCEAU<br />LEASEHUB<br />RDC
+          SCEAU<br />BAILCONNECT
         </div>
 
         <article className="max-w-3xl space-y-5 pr-0 text-sm leading-7 text-slate-700 md:pr-32 md:text-base">

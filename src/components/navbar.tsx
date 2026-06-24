@@ -49,7 +49,7 @@ export function Navbar() {
     <>
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
-          <Link href="/" className="min-w-0 text-lg font-black tracking-tight md:text-xl">LeaseHub<span className="text-brand-600"> RDC</span></Link>
+          <Link href="/" className="min-w-0 text-lg font-black tracking-tight md:text-xl">Bail<span className="text-brand-600">Connect</span></Link>
           <div className="hidden items-center gap-2 md:flex">
             {items.map(({ label, href }) => <Link key={href} href={href} className={linkClass(href)}>{label}</Link>)}
           </div>

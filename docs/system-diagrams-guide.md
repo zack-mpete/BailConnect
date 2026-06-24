@@ -1,10 +1,10 @@
 # Guide d'analyse pour créer des diagrammes
 
-Ce document résume l'architecture de la plateforme **LeaseHub RDC** et fournit des modèles Mermaid prêts à transformer en diagrammes : architecture, parcours utilisateur, base de données, états métier et flux API.
+Ce document résume l'architecture de la plateforme **BailConnect** et fournit des modèles Mermaid prêts à transformer en diagrammes : architecture, parcours utilisateur, base de données, états métier et flux API.
 
 ## 1. Vue générale du système
 
-LeaseHub RDC est une application de location immobilière construite avec **Next.js App Router**, **React**, **TypeScript**, **Tailwind CSS** et **Supabase**.
+BailConnect est une application de location immobilière construite avec **Next.js App Router**, **React**, **TypeScript**, **Tailwind CSS** et **Supabase**.
 
 Le système permet de :
 

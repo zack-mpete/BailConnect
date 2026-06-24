@@ -1,4 +1,4 @@
-# TODO Agent — Développement complet LeaseHub RDC
+# TODO Agent - Développement complet BailConnect
 
 ## Phase 1 — Base projet
 - [x] Créer projet Next.js + TypeScript.

@@ -100,7 +100,7 @@ export function NotificationCenter() {
     if (!("serviceWorker" in navigator)) return;
 
     function handleMessage(event: MessageEvent) {
-      if (event.data?.type !== "leasehub-notification") return;
+      if (event.data?.type !== "bailconnect-notification") return;
       playNotificationSound();
       refresh();
     }

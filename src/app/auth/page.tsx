@@ -113,7 +113,7 @@ export default function AuthPage() {
         <Card className="w-full space-y-5">
           <div>
             <h1 className="text-3xl font-black">{mode === "login" ? "Connexion" : "Créer un compte"}</h1>
-            <p className="mt-2 text-sm text-muted">{mode === "login" ? "Accède à ton espace LeaseHub." : "Crée ton compte locataire. Un administrateur pourra modifier tes accès ensuite."}</p>
+            <p className="mt-2 text-sm text-muted">{mode === "login" ? "Accède à ton espace BailConnect." : "Crée ton compte locataire. Un administrateur pourra modifier tes accès ensuite."}</p>
           </div>
           <div className="grid grid-cols-2 rounded-full bg-slate-100 p-1">
             <button type="button" onClick={() => setMode("login")} className={`rounded-full px-4 py-2 text-sm font-bold ${mode === "login" ? "bg-white shadow-card" : "text-muted"}`}>Login</button>

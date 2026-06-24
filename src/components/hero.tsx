@@ -15,7 +15,7 @@ export function Hero() {
         <div>
           <div className="mb-4 inline-flex rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">Plateforme de location immobilière transparente</div>
           <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">Trouver, louer et valider un bail depuis une seule interface.</h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-muted md:text-lg">LeaseHub RDC combine un fil d'actualité immobilier mobile-first, des dashboards par rôle et des contrats de bail avec accord des parties.</p>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-muted md:text-lg">BailConnect combine un fil d'actualité immobilier mobile-first, des dashboards par rôle et des contrats de bail avec accord des parties.</p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button href="/search" className="bg-ink text-white">Chercher une maison <ArrowRight size={17} /></Button>
             <Button href="/add-house" className="bg-white text-ink shadow-card">Publier un bien</Button>

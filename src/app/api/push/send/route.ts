@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   if (!client) return error;
 
   const payload = await req.json();
-  const { title = "LeaseHub RDC", body = "Nouvelle notification", recipientUserIds = [], type = "manual", metadata = {} } = payload;
+  const { title = "BailConnect", body = "Nouvelle notification", recipientUserIds = [], type = "manual", metadata = {} } = payload;
 
   const { data: authData, error: authError } = await client.auth.getUser();
   if (authError || !authData.user) return apiError("Connexion requise.", 401);

@@ -7,12 +7,12 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('push', function(event) {
-  const data = event.data ? event.data.json() : { title: 'LeaseHub RDC', body: 'Nouvelle notification' };
+  const data = event.data ? event.data.json() : { title: 'BailConnect', body: 'Nouvelle notification' };
   event.waitUntil(Promise.all([
     self.registration.showNotification(data.title, { body: data.body, icon: '/icon.svg', data: { url: data.url || '/' } }),
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clients) {
       clients.forEach(function(client) {
-        client.postMessage({ type: 'leasehub-notification', notification: data });
+        client.postMessage({ type: 'bailconnect-notification', notification: data });
       });
     })
   ]));

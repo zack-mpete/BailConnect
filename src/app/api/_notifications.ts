@@ -23,7 +23,7 @@ type PushSubscriptionRow = {
 function configureWebPush() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:admin@leasehub-rdc.local";
+  const subject = process.env.VAPID_SUBJECT || "mailto:admin@bailconnect.local";
 
   if (!publicKey || !privateKey) return false;
   webpush.setVapidDetails(subject, publicKey, privateKey);
