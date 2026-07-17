@@ -20,6 +20,7 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+  const requestedUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+  const url = typeof requestedUrl === 'string' && requestedUrl.startsWith('/') && !requestedUrl.startsWith('//') ? requestedUrl : '/';
   event.waitUntil(self.clients.openWindow(url));
 });

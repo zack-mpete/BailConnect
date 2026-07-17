@@ -1,5 +1,6 @@
 import { ArrowRight, FileSignature, Home, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui";
 
 const highlights: Array<{ Icon: LucideIcon; label: string }> = [
@@ -18,7 +19,7 @@ export function Hero() {
           <p className="mt-5 max-w-2xl text-base leading-8 text-muted md:text-lg">BailConnect combine un fil d'actualité immobilier mobile-first, des dashboards par rôle et des contrats de bail avec accord des parties.</p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button href="/search" className="bg-ink text-white">Chercher une maison <ArrowRight size={17} /></Button>
-            <Button href="/add-house" className="bg-white text-ink shadow-card">Publier un bien</Button>
+            <Button href="/dashboard?section=properties" className="bg-white text-ink shadow-card">Gerer mes biens</Button>
           </div>
           <div className="mt-8 grid grid-cols-3 gap-3 text-sm">
             {highlights.map(({ Icon, label }) => (
@@ -29,8 +30,16 @@ export function Hero() {
             ))}
           </div>
         </div>
-        <div className="glass rounded-[2.5rem] p-4 shadow-soft">
-          <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop" alt="Maison moderne" className="h-[460px] w-full rounded-[2rem] object-cover" />
+        <div className="glass rounded-2xl p-4 shadow-soft">
+          <Image
+            src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop"
+            alt="Maison moderne"
+            width={1200}
+            height={920}
+            priority
+            sizes="(min-width: 768px) 47vw, 100vw"
+            className="h-[460px] w-full rounded-2xl object-cover"
+          />
         </div>
       </div>
     </section>

@@ -24,7 +24,7 @@ async function getActiveServiceWorkerRegistration() {
   await new Promise<void>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       worker.removeEventListener("statechange", handleStateChange);
-      reject(new Error("Service worker non activÃ©."));
+      reject(new Error("Service worker non activé."));
     }, 10000);
 
     function handleStateChange() {

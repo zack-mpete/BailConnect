@@ -1,4 +1,4 @@
-import type { AppData, AppRole, AppUser, Contract, House, Role } from "@/types";
+import type { AppData, AppRole, House, Role } from "@/types";
 import { createPublicSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import { getMockData } from "@/lib/mock";
 
@@ -11,11 +11,7 @@ type RoleRow = {
 
 type UserRow = {
   id: string;
-  role_id: number | null;
   full_name: string;
-  email: string | null;
-  phone: string | null;
-  verified: boolean;
 };
 
 type HouseRow = {
@@ -32,28 +28,35 @@ type HouseRow = {
   price: number | string;
   rooms: number;
   type: string;
-  status: "Disponible" | "Réservé" | "Loué";
+  status: House["status"];
+  current_tenant_id?: string | null;
+  current_contract_id?: string | null;
   image_url: string | null;
   features: string[] | null;
+  contract_duration_months?: number | null;
+  contract_deposit?: number | string | null;
+  contract_payment_terms?: string | null;
+  contract_special_terms?: string | null;
+  contract_title?: string | null;
+  contract_body?: string | null;
   created_at: string;
-};
-
-type ContractRow = {
-  id: string;
-  house_id: string;
-  owner_id: string;
-  tenant_id: string;
-  start_date: string;
-  duration_months: number;
-  rent: number | string;
-  status: string;
-  seal_code: string;
-  agreed_by_owner_at?: string | null;
-  agreed_by_tenant_at?: string | null;
 };
 
 const fallbackImage =
   "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1200&auto=format&fit=crop";
+
+const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
+function emptyData(): AppData {
+  return {
+    users: [],
+    roles: [],
+    houses: [],
+    contracts: [],
+    payments: [],
+    stats: { houses: 0, contracts: 0, users: 0 }
+  };
+}
 
 async function getFallbackData(): Promise<AppData> {
   const mock = await getMockData();
@@ -66,7 +69,8 @@ async function getFallbackData(): Promise<AppData> {
       role: user.role as Role,
       phone: user.phone,
       verified: user.verified
-    }))
+    })),
+    payments: mock.payments || []
   };
 }
 
@@ -79,22 +83,11 @@ function toRole(row: RoleRow): AppRole {
   };
 }
 
-function toUser(row: UserRow, rolesById: Map<number, AppRole>): AppUser {
-  return {
-    id: row.id,
-    fullName: row.full_name,
-    email: row.email,
-    phone: row.phone,
-    role: row.role_id ? rolesById.get(row.role_id)?.name || "locataire" : "locataire",
-    verified: row.verified
-  };
+function ownerName(ownerId: string, usersById: Map<string, string>) {
+  return usersById.get(ownerId) || "Bailleur";
 }
 
-function ownerName(ownerId: string, usersById: Map<string, AppUser>) {
-  return usersById.get(ownerId)?.fullName || "Bailleur";
-}
-
-function toHouse(row: HouseRow, usersById: Map<string, AppUser>): House {
+export function toHouse(row: HouseRow, usersById: Map<string, string> = new Map()): House {
   const owner = ownerName(row.owner_id, usersById);
 
   return {
@@ -111,76 +104,71 @@ function toHouse(row: HouseRow, usersById: Map<string, AppUser>): House {
     rooms: row.rooms,
     type: row.type,
     status: row.status,
+    currentTenantId: null,
+    currentTenant: null,
+    currentContractId: null,
     owner,
     agency: "",
     image: row.image_url || fallbackImage,
     description: row.description,
     features: row.features || [],
+    contractDurationMonths: row.contract_duration_months ?? 12,
+    contractDeposit: row.contract_deposit === null || row.contract_deposit === undefined ? null : Number(row.contract_deposit),
+    contractPaymentTerms: row.contract_payment_terms || null,
+    contractSpecialTerms: row.contract_special_terms || null,
+    contractTitle: row.contract_title || null,
+    contractBody: row.contract_body || null,
     publishedAt: row.created_at
   };
 }
 
-function toContract(row: ContractRow, usersById: Map<string, AppUser>): Contract {
-  return {
-    id: row.id,
-    houseId: row.house_id,
-    ownerId: row.owner_id,
-    tenantId: row.tenant_id,
-    tenant: ownerName(row.tenant_id, usersById),
-    owner: ownerName(row.owner_id, usersById),
-    startDate: row.start_date,
-    duration: `${row.duration_months} mois`,
-    rent: Number(row.rent),
-    status: row.status,
-    seal: row.seal_code,
-    agreedByOwnerAt: row.agreed_by_owner_at || null,
-    agreedByTenantAt: row.agreed_by_tenant_at || null
-  };
-}
-
 export async function getAppData(): Promise<AppData> {
-  if (!isSupabaseConfigured) {
+  if (useMockData) {
     return getFallbackData();
+  }
+
+  if (!isSupabaseConfigured) {
+    return emptyData();
   }
 
   const client = createPublicSupabaseClient();
   if (!client) {
-    return getFallbackData();
+    return emptyData();
   }
 
   const results = await Promise.all([
     client.from("role").select("id,name,label,description").order("label"),
-    client.from("users").select("id,role_id,full_name,email,phone,verified").order("created_at", { ascending: false }),
-    client.from("houses").select("*").order("created_at", { ascending: false }),
-    client.from("contracts").select("*").order("created_at", { ascending: false })
+    client.from("users").select("id,full_name"),
+    client
+      .from("houses")
+      .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+      .order("created_at", { ascending: false })
   ]).catch(() => null);
 
   if (!results) {
-    return getFallbackData();
+    return emptyData();
   }
 
-  const [rolesResult, usersResult, housesResult, contractsResult] = results;
+  const [rolesResult, usersResult, housesResult] = results;
 
   if (housesResult.error || rolesResult.error) {
-    return getFallbackData();
+    return emptyData();
   }
 
   const roles = ((rolesResult.data || []) as RoleRow[]).map(toRole);
-  const rolesById = new Map(roles.map(role => [role.id, role]));
-  const users = ((usersResult.data || []) as UserRow[]).map(row => toUser(row, rolesById));
-  const usersById = new Map(users.map(user => [user.id, user]));
+  const usersById = new Map(((usersResult.data || []) as UserRow[]).map(user => [user.id, user.full_name]));
   const houses = ((housesResult.data || []) as HouseRow[]).map(row => toHouse(row, usersById));
-  const contracts = ((contractsResult.data || []) as ContractRow[]).map(row => toContract(row, usersById));
 
   return {
-    users,
+    users: [],
     roles,
     houses,
-    contracts,
+    contracts: [],
+    payments: [],
     stats: {
       houses: houses.length,
-      contracts: contracts.length,
-      users: users.length
+      contracts: 0,
+      users: 0
     }
   };
 }
@@ -192,10 +180,38 @@ export async function getHouses() {
 
 export async function getHouse(id: string) {
   const houses = await getHouses();
-  return houses.find(house => house.id === id) || null;
+  const listedHouse = houses.find(house => house.id === id);
+  if (listedHouse) return listedHouse;
+
+  // A real Supabase identifier can be opened while the catalog still uses
+  // mock data locally. Querying the requested row prevents a valid detail URL
+  // from being turned into a Next.js 404 only because it is absent from mock.
+  if (!isSupabaseConfigured) return null;
+
+  const client = createPublicSupabaseClient();
+  if (!client) return null;
+
+  const { data, error } = await client
+    .from("houses")
+    .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return toHouse(data as HouseRow);
 }
 
 export async function getRoles() {
-  const data = await getAppData();
-  return data.roles;
+  if (useMockData || !isSupabaseConfigured) return [];
+
+  const client = createPublicSupabaseClient();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from("role")
+    .select("id,name,label,description")
+    .order("label");
+
+  if (error) return [];
+  return ((data || []) as RoleRow[]).map(toRole);
 }

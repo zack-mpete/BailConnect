@@ -20,7 +20,7 @@ const config: Config = {
         soft: "0 20px 60px rgba(15, 23, 42, .10)",
         card: "0 18px 35px rgba(16, 24, 40, .08)"
       },
-      borderRadius: { xxl: "2rem" }
+      borderRadius: { xxl: "1.5rem" }
     }
   },
   plugins: []

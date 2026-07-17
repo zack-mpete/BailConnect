@@ -30,11 +30,20 @@ export type House = {
   rooms: number;
   type: string;
   status: "Disponible" | "Réservé" | "Loué" | "Archivé";
+  currentTenantId?: string | null;
+  currentTenant?: string | null;
+  currentContractId?: string | null;
   owner: string;
   agency?: string;
   image: string;
   description: string;
   features: string[];
+  contractDurationMonths?: number | null;
+  contractDeposit?: number | null;
+  contractPaymentTerms?: string | null;
+  contractSpecialTerms?: string | null;
+  contractTitle?: string | null;
+  contractBody?: string | null;
   publishedAt: string;
 };
 
@@ -54,10 +63,28 @@ export type Contract = {
   agreedByTenantAt?: string | null;
 };
 
+export type Payment = {
+  id: string;
+  houseId: string;
+  contractId?: string | null;
+  ownerId: string;
+  tenantId?: string | null;
+  occupantName: string;
+  houseTitle?: string | null;
+  amount: number;
+  period: string;
+  paidAt: string;
+  method: string;
+  reference?: string | null;
+  note?: string | null;
+  createdAt: string;
+};
+
 export type AppData = {
   users: AppUser[];
   roles: AppRole[];
   houses: House[];
   contracts: Contract[];
+  payments: Payment[];
   stats: { houses: number; contracts: number; users: number };
 };

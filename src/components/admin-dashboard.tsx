@@ -13,6 +13,11 @@ import { getSupabaseAccessToken } from "@/lib/supabase";
 import type { AppData, AppUser, House, Role } from "@/types";
 
 type AdminSection = "overview" | "contracts" | "publications" | "users" | "map";
+type PublicationAction = "archive" | "restore" | "validate" | "delete";
+
+function isAdminSection(value: string | null): value is AdminSection {
+  return value === "overview" || value === "contracts" || value === "publications" || value === "users" || value === "map";
+}
 
 const navigation: Array<{ id: AdminSection; label: string; description: string; Icon: typeof BarChart3 }> = [
   { id: "overview", label: "Vue d'ensemble", description: "Indicateurs et activité récente", Icon: BarChart3 },
@@ -43,6 +48,10 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
       if (!res.ok) throw new Error(body?.error || "Chargement admin impossible.");
       setData(body);
     } catch (err) {
+      console.error("[admin-dashboard] Actualisation impossible.", {
+        name: err instanceof Error ? err.name : "UnknownError",
+        message: err instanceof Error ? err.message : String(err)
+      });
       toast.error(err instanceof Error ? err.message : "Chargement admin impossible.");
     } finally {
       setLoading(false);
@@ -53,7 +62,29 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
     refresh();
   }, [refresh]);
 
-  async function updateHouse(house: House, action: "archive" | "restore" | "delete") {
+  useEffect(() => {
+    const syncSectionFromUrl = () => {
+      const nextSection = new URLSearchParams(window.location.search).get("section");
+      setSection(isAdminSection(nextSection) ? nextSection : "overview");
+    };
+
+    syncSectionFromUrl();
+    window.addEventListener("popstate", syncSectionFromUrl);
+    return () => window.removeEventListener("popstate", syncSectionFromUrl);
+  }, []);
+
+  function selectSection(nextSection: AdminSection) {
+    setSection(nextSection);
+    const url = new URL(window.location.href);
+    if (nextSection === "overview") {
+      url.searchParams.delete("section");
+    } else {
+      url.searchParams.set("section", nextSection);
+    }
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function updateHouse(house: House, action: PublicationAction) {
     const token = await getSupabaseAccessToken();
     if (!token) return;
 
@@ -67,11 +98,17 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
+      console.error("[admin-dashboard] Action publication impossible.", {
+        houseId: house.id,
+        action,
+        status: res.status,
+        error: body?.error || null
+      });
       toast.error(body?.error || "Action impossible.");
       return;
     }
 
-    toast.success(action === "delete" ? "Publication supprimée." : "Publication mise à jour.");
+    toast.success(action === "delete" ? "Publication supprimée." : action === "validate" ? "Publication validée." : "Publication mise à jour.");
     await refresh();
   }
 
@@ -100,9 +137,9 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
   if (user?.role !== "admin") return null;
 
   return (
-    <section className="rounded-2xl bg-slate-100 p-3">
-      <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-2xl bg-ink p-4 text-white">
+    <section className="rounded-2xl bg-slate-100 p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
+      <div className="grid gap-3 lg:h-full lg:grid-cols-[280px_1fr]">
+        <aside className="rounded-2xl bg-ink p-4 text-white lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase text-white/50">Admin</p>
@@ -114,7 +151,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
           </div>
           <nav className="mt-6 grid gap-2">
             {navigation.map(({ id, label, description, Icon }) => (
-              <button key={id} onClick={() => setSection(id)} className={`flex items-center gap-3 rounded-2xl p-3 text-left transition ${section === id ? "bg-white text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
+              <button key={id} onClick={() => selectSection(id)} className={`flex items-center gap-3 rounded-2xl p-3 text-left transition ${section === id ? "bg-white text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${section === id ? "bg-brand-50 text-brand-700" : "bg-white/10"}`}><Icon size={18} /></span>
                 <span className="min-w-0">
                   <span className="block text-sm font-black">{label}</span>
@@ -125,7 +162,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
           </nav>
         </aside>
 
-        <div className="min-w-0 rounded-2xl bg-slate-50 p-3 md:p-5">
+        <div className="min-w-0 rounded-2xl bg-slate-50 p-2 md:p-3 lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           {section === "overview" && <AdminOverview data={data} />}
           {section === "contracts" && <AdminContracts contracts={data.contracts} />}
           {section === "publications" && <AdminPublications houses={data.houses} onAction={updateHouse} />}

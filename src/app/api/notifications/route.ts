@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError, getApiClient } from "@/app/api/_supabase";
+import { apiError, getApiClient, getAuthenticatedUser } from "@/app/api/_supabase";
 
 function isNotificationsSchemaError(error: { code?: string; message?: string }) {
   const message = error.message?.toLowerCase() || "";
@@ -32,13 +32,13 @@ export async function GET(req: NextRequest) {
   const { client, error } = getApiClient(req);
   if (!client) return error;
 
-  const { data: authData, error: authError } = await client.auth.getUser();
-  if (authError || !authData.user) return apiError("Connexion requise.", 401);
+  const { user, errorResponse } = await getAuthenticatedUser(client, "[api/notifications] Vérification de session impossible.");
+  if (!user) return errorResponse;
 
   const { data, error: readError } = await client
     .from("notifications")
     .select("id,type,title,body,url,read_at,metadata,created_at")
-    .eq("user_id", authData.user.id)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(30);
 
@@ -51,17 +51,19 @@ export async function PATCH(req: NextRequest) {
   const { client, error } = getApiClient(req);
   if (!client) return error;
 
-  const { notification_id } = await req.json();
+  const body = await req.json().catch(() => null) as { notification_id?: string } | null;
+  if (!body) return apiError("Corps de requete invalide.");
+  const { notification_id } = body;
   if (!notification_id) return apiError("Notification manquante.");
 
-  const { data: authData, error: authError } = await client.auth.getUser();
-  if (authError || !authData.user) return apiError("Connexion requise.", 401);
+  const { user, errorResponse } = await getAuthenticatedUser(client, "[api/notifications] Vérification de session impossible.");
+  if (!user) return errorResponse;
 
   const { data, error: updateError } = await client
     .from("notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("id", notification_id)
-    .eq("user_id", authData.user.id)
+    .eq("user_id", user.id)
     .select("id")
     .single();
 

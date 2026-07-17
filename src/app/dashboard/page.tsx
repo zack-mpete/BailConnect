@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   return (
     <main className="pb-24 md:pb-0">
       <Navbar />
-      <section className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <section className="mx-auto max-w-7xl px-4 py-4 md:px-6">
         <DashboardShell data={data} />
       </section>
     </main>

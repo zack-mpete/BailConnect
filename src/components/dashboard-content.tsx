@@ -31,7 +31,7 @@ export function DashboardContent({ data }: { data: AppData }) {
         </Card>}
         <Card>
           <h2 className="text-xl font-black">Contrats</h2>
-          <div className="mt-4 space-y-3">{data.contracts.map(c => <div key={c.id} className="rounded-2xl bg-slate-50 p-4"><p className="font-bold">{c.tenant} / {c.owner}</p><p className="text-sm text-muted">Début: {c.startDate} - Durée: {c.duration}</p><Badge>{c.status}</Badge></div>)}</div>
+          <div className="mt-4 space-y-3">{data.contracts.map(c => <div key={c.id} className="soft-panel"><p className="font-bold">{c.tenant} / {c.owner}</p><p className="text-sm text-muted">Début: {c.startDate} - Durée: {c.duration}</p><Badge>{c.status}</Badge></div>)}</div>
         </Card>
       </div>
     </div>

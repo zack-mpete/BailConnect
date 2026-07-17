@@ -131,6 +131,20 @@ Persistent in-app notifications. Web Push is attempted in parallel when VAPID ke
 | `metadata` | `jsonb` | Event metadata |
 | `created_at` | `timestamptz` | Defaults to `now()` |
 
+### `messages`
+
+Classic one-to-one messages attached to a house. A conversation is derived from the house and its two participants; no separate conversation record is required.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | Primary key |
+| `house_id` | `uuid` | References `houses(id)` |
+| `sender_id` | `uuid` | Sender, references `users(id)` |
+| `recipient_id` | `uuid` | Recipient, references `users(id)` |
+| `body` | `text` | Required, 1 to 2,000 trimmed characters |
+| `read_at` | `timestamptz` | Null until the recipient opens the conversation |
+| `created_at` | `timestamptz` | Defaults to `now()` |
+
 ### `push_subscriptions`
 
 Browser Web Push subscriptions.

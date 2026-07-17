@@ -3,12 +3,14 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { RoleGate } from "@/components/role-gate";
 import { Button, Card } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import { Home, ImagePlus, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
+import { houseManagerHref } from "@/lib/house-links";
 
 const LeafletLocationPicker = dynamic(() => import("@/components/leaflet-maps").then(mod => mod.LeafletLocationPicker), {
   ssr: false,
@@ -107,6 +109,7 @@ function safeFileName(name: string) {
 }
 
 export default function AddHousePage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<LatLng | null>(null);
   const [selectedCity, setSelectedCity] = useState(cityOptions[0]);
@@ -203,18 +206,28 @@ export default function AddHousePage() {
           type: form.get("type"),
           description: form.get("description"),
           image_url: imageUrl,
-          features
+          features,
+          contract_duration_months: form.get("contract_duration_months"),
+          contract_deposit: form.get("contract_deposit"),
+          contract_payment_terms: form.get("contract_payment_terms"),
+          contract_special_terms: form.get("contract_special_terms"),
+          contract_title: form.get("contract_title"),
+          contract_body: form.get("contract_body")
         })
       });
 
+      const body = await res.json().catch(() => null);
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(body?.error || "Publication impossible.");
       }
 
       formElement.reset();
       setLocation(null);
       toast.success("Maison publiée.");
+      if (body?.house?.id) {
+        router.replace(houseManagerHref(String(body.house.id)));
+        router.refresh();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Publication impossible.");
     } finally {
@@ -230,26 +243,26 @@ export default function AddHousePage() {
           <p className="mt-2 text-muted">Publie une annonce visible dans le fil immobilier après connexion.</p>
           <form onSubmit={submit} className="mt-6 grid gap-5 lg:grid-cols-[1fr_.75fr]">
             <Card className="space-y-4">
-              <label className="block text-sm font-bold">Titre<input name="title" required className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-brand-500" placeholder="Maison moderne à Golf" /></label>
+              <label className="block text-sm font-bold">Titre<input name="title" required className="mt-2 form-control" placeholder="Maison moderne à Golf" /></label>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-bold">Ville
-                  <select name="city" required value={selectedCity} onChange={event => changeCity(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3">
+                  <select name="city" required value={selectedCity} onChange={event => changeCity(event.target.value)} className="mt-2 form-control">
                     {cityOptions.map(city => <option key={city} value={city}>{city}</option>)}
                   </select>
                 </label>
                 <label className="block text-sm font-bold">Commune
-                  <select name="commune" required value={selectedCommune} onChange={event => changeCommune(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3">
+                  <select name="commune" required value={selectedCommune} onChange={event => changeCommune(event.target.value)} className="mt-2 form-control">
                     {communeOptions.map(commune => <option key={commune} value={commune}>{commune}</option>)}
                   </select>
                 </label>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-bold">Quartier
-                  <select name="district" required value={selectedDistrict} onChange={event => changeDistrict(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3">
+                  <select name="district" required value={selectedDistrict} onChange={event => changeDistrict(event.target.value)} className="mt-2 form-control">
                     {districtOptions.map(district => <option key={district} value={district}>{district}</option>)}
                   </select>
                 </label>
-                <label className="block text-sm font-bold">Adresse indicative<input name="address" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="Avenue, repere ou reference" /></label>
+                <label className="block text-sm font-bold">Adresse indicative<input name="address" className="mt-2 form-control" placeholder="Avenue, repère ou référence" /></label>
               </div>
               <div className="space-y-3">
                 <div>
@@ -258,24 +271,35 @@ export default function AddHousePage() {
                 </div>
                 <LeafletLocationPicker value={location} suggestedCenter={suggestedCenter} onChange={setLocation} />
                 <div className="grid gap-3 text-xs font-semibold text-muted md:grid-cols-2">
-                  <p className="rounded-xl bg-slate-50 p-3">Latitude : {location ? location.lat.toFixed(6) : "non definie"}</p>
-                  <p className="rounded-xl bg-slate-50 p-3">Longitude : {location ? location.lng.toFixed(6) : "non definie"}</p>
+                  <p className="soft-tile">Latitude : {location ? location.lat.toFixed(6) : "non définie"}</p>
+                  <p className="soft-tile">Longitude : {location ? location.lng.toFixed(6) : "non définie"}</p>
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <label className="block text-sm font-bold">Prix / mois<input name="price" required type="number" min="1" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="500" /></label>
-                <label className="block text-sm font-bold">Pièces<input name="rooms" required type="number" min="1" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="4" /></label>
-                <label className="block text-sm font-bold">Type<select name="type" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3"><option>Maison</option><option>Appartement</option><option>Villa</option><option>Studio</option></select></label>
+                <label className="block text-sm font-bold">Prix / mois<input name="price" required type="number" min="1" className="mt-2 form-control" placeholder="500" /></label>
+                <label className="block text-sm font-bold">Pièces<input name="rooms" required type="number" min="1" className="mt-2 form-control" placeholder="4" /></label>
+                <label className="block text-sm font-bold">Type<select name="type" className="mt-2 form-control"><option>Maison</option><option>Appartement</option><option>Villa</option><option>Studio</option></select></label>
               </div>
-              <label className="block text-sm font-bold">Image<input name="image" type="file" accept="image/*" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 file:mr-4 file:rounded-full file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-brand-700" /></label>
-              <label className="block text-sm font-bold">Équipements<input name="features" className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="Parking, Jardin, Sécurité" /></label>
-              <label className="block text-sm font-bold">Description<textarea name="description" required rows={5} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="Décrire la maison, le quartier et les avantages..." /></label>
+              <label className="block text-sm font-bold">Image<input name="image" type="file" accept="image/*" className="mt-2 form-control file:mr-4 file:rounded-full file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-brand-700" /></label>
+              <label className="block text-sm font-bold">Équipements<input name="features" className="mt-2 form-control" placeholder="Parking, Jardin, Sécurité" /></label>
+              <label className="block text-sm font-bold">Description<textarea name="description" required rows={5} className="mt-2 form-control" placeholder="Décrire la maison, le quartier et les avantages..." /></label>
+              <div className="soft-panel">
+                <h2 className="text-sm font-black">Conditions du contrat</h2>
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
+                  <label className="block text-sm font-bold">Durée du bail en mois<input name="contract_duration_months" type="number" min="1" max="120" defaultValue={12} className="mt-2 form-control" /></label>
+                  <label className="block text-sm font-bold">Dépôt de garantie<input name="contract_deposit" type="number" min="0" className="mt-2 form-control" placeholder="0" /></label>
+                </div>
+                <label className="mt-4 block text-sm font-bold">Titre du contrat<input name="contract_title" className="mt-2 form-control" placeholder="Contrat de bail a usage d'habitation" /></label>
+                <label className="mt-4 block text-sm font-bold">Modalités de paiement<input name="contract_payment_terms" className="mt-2 form-control" placeholder="Paiement avant le 5 de chaque mois" /></label>
+                <label className="mt-4 block text-sm font-bold">Clauses particulières<textarea name="contract_special_terms" rows={4} className="mt-2 form-control" placeholder="Regles, charges incluses, entretien, conditions spécifiques..." /></label>
+                <label className="mt-4 block text-sm font-bold">Texte complet du contrat<textarea name="contract_body" rows={8} className="mt-2 form-control" placeholder="Texte complet optionnel du contrat..." /></label>
+              </div>
               <Button disabled={loading} className="w-full bg-ink text-white disabled:opacity-60">{loading ? "Publication..." : "Publier la maison"}</Button>
             </Card>
             <Card className="space-y-4 bg-ink text-white">
-              <div className="rounded-xxl bg-white/10 p-5"><ImagePlus/><h2 className="mt-4 text-xl font-black">Médias</h2><p className="mt-2 text-sm text-white/70">Ajoute une image nette qui montre réellement le bien.</p></div>
-              <div className="rounded-xxl bg-white/10 p-5"><MapPin/><h2 className="mt-4 text-xl font-black">Localisation</h2><p className="mt-2 text-sm text-white/70">Ville et commune alimentent les filtres publics.</p></div>
-              <div className="rounded-xxl bg-white/10 p-5"><Home/><h2 className="mt-4 text-xl font-black">Statut</h2><p className="mt-2 text-sm text-white/70">Chaque nouvelle annonce démarre en Disponible.</p></div>
+              <div className="rounded-2xl bg-white/10 p-5"><ImagePlus/><h2 className="mt-4 text-xl font-black">Médias</h2><p className="mt-2 text-sm text-white/70">Ajoute une image nette qui montre réellement le bien.</p></div>
+              <div className="rounded-2xl bg-white/10 p-5"><MapPin/><h2 className="mt-4 text-xl font-black">Localisation</h2><p className="mt-2 text-sm text-white/70">Ville et commune alimentent les filtres publics.</p></div>
+              <div className="rounded-2xl bg-white/10 p-5"><Home/><h2 className="mt-4 text-xl font-black">Statut</h2><p className="mt-2 text-sm text-white/70">Chaque nouvelle annonce démarre en Disponible.</p></div>
             </Card>
           </form>
         </RoleGate>

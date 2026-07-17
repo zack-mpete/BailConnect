@@ -24,8 +24,11 @@ export async function PATCH(req: NextRequest) {
   const { client, error } = getApiClient(req);
   if (!client) return error;
 
-  const { user_id, role } = (await req.json()) as { user_id?: string; role?: Role };
+  const body = await req.json().catch(() => null) as { user_id?: string; role?: Role } | null;
+  if (!body) return apiError("Corps de requete invalide.");
+  const { user_id, role } = body;
   if (!user_id || !role) return apiError("Utilisateur et rôle requis.");
+  if (!["admin", "bailleur", "agence", "locataire"].includes(role)) return apiError("Role invalide.");
 
   const { data: authData, error: authError } = await client.auth.getUser();
   if (authError || !authData.user) return apiError("Connexion requise.", 401);

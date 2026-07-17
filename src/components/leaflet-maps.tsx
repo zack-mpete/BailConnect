@@ -85,7 +85,7 @@ export function LeafletLocationPicker({
   );
 }
 
-export function LeafletHousesMap({ houses }: { houses: House[] }) {
+export function LeafletHousesMap({ houses, getHouseHref }: { houses: House[]; getHouseHref?: (house: House) => string }) {
   const housesWithCoords = houses.filter((house): house is House & { latitude: number; longitude: number } =>
     typeof house.latitude === "number" &&
     typeof house.longitude === "number" &&
@@ -113,6 +113,7 @@ export function LeafletHousesMap({ houses }: { houses: House[] }) {
               <p className="font-bold">{house.title}</p>
               <p>{house.district ? `${house.district}, ` : ""}{house.commune}, {house.city}</p>
               <p>{money(house.price)}</p>
+              {getHouseHref && <a href={getHouseHref(house)} className="mt-2 inline-block font-bold text-brand-700">Ouvrir le detail</a>}
             </div>
           </Popup>
         </Marker>

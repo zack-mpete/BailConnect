@@ -4,18 +4,188 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: radial-gradient(circle at top left, rgba(6,182,212,.12), transparent 28%), #fbfaf7;
-  color: #101828;
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(circle at top left, rgba(6, 182, 212, .10), transparent 28%),
+      linear-gradient(180deg, #fbfaf7 0%, #f8fafc 100%);
+    color: #101828;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: #cffafe;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  }
+
+  button,
+  select,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    @apply bg-white text-slate-900 transition-colors duration-200 placeholder:text-slate-400;
+  }
+
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):hover,
+  select:hover,
+  textarea:hover {
+    @apply border-slate-300;
+  }
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  th {
+    @apply font-black tracking-wide;
+  }
 }
-::selection { background: #cffafe; }
-.glass { background: rgba(255,255,255,.76); backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,.55); }
-.contract-paper { background: linear-gradient(135deg, #fff 0%, #fffaf2 100%); }
-.seal { border: 2px dashed #b42318; color:#b42318; transform: rotate(-9deg); }
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, .78);
+    border: 1px solid rgba(255, 255, 255, .62);
+    backdrop-filter: blur(18px);
+  }
+
+  .contract-paper {
+    background: linear-gradient(135deg, #fff 0%, #fffaf2 100%);
+  }
+
+  .seal {
+    border: 2px dashed #b42318;
+    color: #b42318;
+    transform: rotate(-9deg);
+  }
+
+  .surface-card {
+    @apply rounded-2xl bg-white p-5 shadow-card;
+  }
+
+  .soft-tile {
+    @apply rounded-xl bg-slate-50 p-3;
+  }
+
+  .soft-panel {
+    @apply rounded-2xl bg-slate-50 p-4;
+  }
+
+  .form-control {
+    @apply w-full rounded-xl border border-slate-200 px-4 py-3 leading-6;
+  }
+
+  .icon-chip {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl;
+  }
+}
+
+@layer utilities {
+  .scrollbar-soft {
+    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-width: thin;
+  }
+}
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    min-height: auto;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .contract-print-area,
+  .contract-print-area * {
+    visibility: visible;
+  }
+
+  .contract-print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0;
+    width: 100% !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .contract-print-area article {
+    max-width: none !important;
+    padding-right: 28mm !important;
+    color: #1f2937 !important;
+  }
+
+  .contract-print-area [contenteditable] {
+    outline: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .contract-print-area details,
+  .contract-print-area details:not([open]) > :not(summary) {
+    display: block !important;
+  }
+
+  .contract-print-area details summary {
+    list-style: none;
+  }
+
+  .contract-print-area .print-hidden {
+    display: none !important;
+  }
+
+  .contract-print-area .seal {
+    right: 0 !important;
+    top: 0 !important;
+  }
 }

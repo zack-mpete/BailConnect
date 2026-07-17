@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { MapPin } from "lucide-react";
 import { Badge } from "@/components/ui";
+import { useCurrentUser } from "@/lib/auth-client";
+import { houseDetailHref } from "@/lib/house-links";
 import { money } from "@/lib/utils";
 import type { House } from "@/types";
 
@@ -16,11 +19,13 @@ function hasCoords(house: House) {
 }
 
 export function DashboardMap({ houses, title = "Vue map", subtitle = "Localisation des biens suivis." }: { houses: House[]; title?: string; subtitle?: string }) {
+  const { user } = useCurrentUser();
   const locatedHouses = houses.filter(hasCoords);
   const missingLocation = houses.filter(house => !hasCoords(house));
+  const getHouseHref = (house: House) => houseDetailHref(house, user);
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-card">
+    <div className="surface-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-black">{title}</h2>
@@ -33,11 +38,11 @@ export function DashboardMap({ houses, title = "Vue map", subtitle = "Localisati
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_300px]">
-        <LeafletHousesMap houses={locatedHouses} />
+        <LeafletHousesMap houses={locatedHouses} getHouseHref={getHouseHref} />
 
         <div className="space-y-2">
           {locatedHouses.slice(0, 7).map(house => (
-            <div key={house.id} className="rounded-xl bg-slate-50 p-3 text-sm">
+            <Link key={house.id} href={getHouseHref(house)} className="block soft-tile text-sm transition hover:bg-brand-50">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-bold">{house.title}</p>
@@ -46,7 +51,7 @@ export function DashboardMap({ houses, title = "Vue map", subtitle = "Localisati
                 </div>
                 <Badge tone={house.status === "Disponible" ? "success" : "warn"}>{house.status}</Badge>
               </div>
-            </div>
+            </Link>
           ))}
 
           {missingLocation.length > 0 && (

@@ -15,10 +15,8 @@ const UserDashboard = dynamic(() => import("@/components/user-dashboard").then(m
 export function DashboardShell({ data }: { data: AppData }) {
   return (
     <RoleGate allow={["admin", "bailleur", "agence", "locataire"]} fallbackText="Connecte-toi pour ouvrir ton tableau de bord.">
-      <h1 className="text-3xl font-black">Dashboards</h1>
-      <p className="mt-2 text-muted">Chaque rôle voit les actions adaptées à son espace.</p>
-      <div className="mt-6"><AdminDashboard initialData={data} /></div>
-      <div className="mt-6"><UserDashboard data={data} /></div>
+      <AdminDashboard initialData={data} />
+      <UserDashboard data={data} />
     </RoleGate>
   );
 }

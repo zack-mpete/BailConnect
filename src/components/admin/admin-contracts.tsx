@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { Eye, FileSignature } from "lucide-react";
 import { Badge } from "@/components/ui";
+import { houseManagerHref } from "@/lib/house-links";
 import { money } from "@/lib/utils";
 import type { Contract } from "@/types";
 
 export function AdminContracts({ contracts }: { contracts: Contract[] }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-card">
+    <div className="surface-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <FileSignature className="text-brand-600" size={20} />
@@ -18,7 +20,7 @@ export function AdminContracts({ contracts }: { contracts: Contract[] }) {
         </div>
         <Badge>{contracts.length} contrats</Badge>
       </div>
-      <div className="mt-5 overflow-x-auto">
+      <div className="mt-4 max-h-[calc(100vh-220px)] overflow-auto scrollbar-soft">
         <table className="w-full min-w-[820px] text-left text-sm">
           <thead className="text-xs uppercase text-muted">
             <tr>
@@ -46,11 +48,14 @@ export function AdminContracts({ contracts }: { contracts: Contract[] }) {
                 <td className="px-3 py-3">
                   <details>
                     <summary className="inline-flex cursor-pointer items-center gap-1 font-bold text-brand-700"><Eye size={15} /> Ouvrir</summary>
-                    <div className="mt-2 rounded-xl bg-slate-50 p-3 text-xs leading-5">
+                    <div className="mt-2 soft-tile text-xs leading-5">
                       <p>ID contrat : {contract.id}</p>
                       <p>ID maison : {contract.houseId}</p>
                       <p>Date début : {contract.startDate}</p>
                       <p>Durée : {contract.duration}</p>
+                      <Link href={houseManagerHref(contract.houseId, "contract")} className="mt-2 inline-block font-black text-brand-700">
+                        Ouvrir le bien
+                      </Link>
                     </div>
                   </details>
                 </td>

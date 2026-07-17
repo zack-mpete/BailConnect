@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { notifyUsers } from "@/app/api/_notifications";
 import { apiError, getApiClient } from "@/app/api/_supabase";
+import { houseContractsHref, houseManagerHref } from "@/lib/house-links";
 import type { Contract } from "@/types";
 import { createClient } from "@supabase/supabase-js";
 
@@ -27,6 +28,7 @@ type HouseRow = {
   id: string;
   owner_id: string;
   price: number | string;
+  contract_duration_months?: number | null;
 };
 
 function getWriteClient(fallbackClient: NonNullable<ReturnType<typeof getApiClient>["client"]>) {
@@ -95,7 +97,9 @@ export async function PATCH(req: NextRequest) {
   const { client, error } = getApiClient(req);
   if (!client) return error;
 
-  const { contract_id, house_id } = (await req.json()) as { contract_id?: string; house_id?: string };
+  const requestBody = await req.json().catch(() => null) as { contract_id?: string; house_id?: string } | null;
+  if (!requestBody) return apiError("Corps de requete invalide.");
+  const { contract_id, house_id } = requestBody;
   if (!contract_id && !house_id) return apiError("Contrat ou maison manquant.");
 
   const { data: authData, error: authError } = await client.auth.getUser();
@@ -114,7 +118,7 @@ export async function PATCH(req: NextRequest) {
   } else {
     const { data: house, error: houseError } = await client
       .from("houses")
-      .select("id,owner_id,price")
+      .select("id,owner_id,price,contract_duration_months")
       .eq("id", house_id)
       .single();
 
@@ -144,7 +148,7 @@ export async function PATCH(req: NextRequest) {
           owner_id: houseRow.owner_id,
           tenant_id: authData.user.id,
           start_date: new Date().toISOString().slice(0, 10),
-          duration_months: 12,
+          duration_months: houseRow.contract_duration_months || 12,
           rent: Number(houseRow.price),
           seal_code: createSealCode(),
           status: "brouillon"
@@ -183,25 +187,35 @@ export async function PATCH(req: NextRequest) {
 
   const updated = data as ContractRow;
   if (ownerAgreed && tenantAgreed) {
-    await getWriteClient(client)
+    const { error: houseUpdateError } = await getWriteClient(client)
       .from("houses")
-      .update({ status: "Loué" })
-      .eq("id", updated.house_id)
-      .eq("status", "Disponible");
+      .update({
+        status: "Loué",
+        current_tenant_id: updated.tenant_id,
+        current_contract_id: updated.id
+      })
+      .eq("id", updated.house_id);
+
+    if (houseUpdateError) {
+      return apiError(`Contrat accepte, mais occupation non synchronisee: ${houseUpdateError.message}`, 500);
+    }
   }
 
-  if (isTenant) {
-    await notifyUsers({
-      client,
-      actorId: authData.user.id,
-      recipientUserIds: [updated.owner_id],
-      type: ownerAgreed && tenantAgreed ? "contract_fully_agreed" : "contract_tenant_agreed",
-      title: ownerAgreed && tenantAgreed ? "Contrat accepte par les deux parties" : "Accord du locataire",
-      body: "Le locataire a confirme son accord sur le contrat.",
-      url: `/contrats?house=${updated.house_id}`,
-      metadata: { house_id: updated.house_id, contract_id: updated.id }
-    });
-  }
+  const recipientId = isTenant ? updated.owner_id : updated.tenant_id;
+  await notifyUsers({
+    client,
+    actorId: authData.user.id,
+    recipientUserIds: [recipientId],
+    type: ownerAgreed && tenantAgreed ? "contract_fully_agreed" : isTenant ? "contract_tenant_agreed" : "contract_owner_agreed",
+    title: ownerAgreed && tenantAgreed ? "Contrat accepte par les deux parties" : isTenant ? "Accord du locataire" : "Accord du bailleur",
+    body: ownerAgreed && tenantAgreed
+      ? "Les deux parties ont confirme leur accord sur le contrat."
+      : isTenant
+        ? "Le locataire a confirme son accord sur le contrat."
+        : "Le bailleur a confirme son accord sur le contrat.",
+    url: isTenant ? houseManagerHref(updated.house_id, "contract") : houseContractsHref(updated.house_id),
+    metadata: { house_id: updated.house_id, contract_id: updated.id }
+  });
 
   return NextResponse.json({ contract: await toContract(client, updated) });
 }

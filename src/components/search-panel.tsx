@@ -18,11 +18,11 @@ export function SearchPanel({ houses }: { houses: House[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="glass rounded-xxl p-4 shadow-card">
+      <div className="glass rounded-2xl p-4 shadow-card">
         <div className="grid gap-3 md:grid-cols-3">
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher par commune, ville, type..." className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-brand-500" />
-          <select value={type} onChange={e => setType(e.target.value)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-brand-500">{types.map(t => <option key={t}>{t}</option>)}</select>
-          <label className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Budget max: ${max}<input type="range" min="150" max="1200" step="50" value={max} onChange={e => setMax(Number(e.target.value))} className="mt-2 w-full" /></label>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher par commune, ville, type..." className="form-control" />
+          <select value={type} onChange={e => setType(e.target.value)} className="form-control">{types.map(t => <option key={t}>{t}</option>)}</select>
+          <label className="form-control py-2 text-sm font-semibold text-slate-600">Budget max: ${max}<input type="range" min="150" max="1200" step="50" value={max} onChange={e => setMax(Number(e.target.value))} className="mt-2 w-full" /></label>
         </div>
       </div>
       <p className="text-sm font-semibold text-muted">{results.length} résultat(s)</p>

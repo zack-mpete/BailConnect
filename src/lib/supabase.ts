@@ -2,21 +2,36 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const requestTimeoutMs = 4500;
+const configuredTimeout = Number(process.env.NEXT_PUBLIC_SUPABASE_TIMEOUT_MS);
+const requestTimeoutMs = Number.isFinite(configuredTimeout)
+  ? Math.min(Math.max(configuredTimeout, 5000), 60000)
+  : 15000;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+  const externalSignal = init?.signal;
+  const abortFromExternalSignal = () => controller.abort(externalSignal?.reason);
+  const timeout = setTimeout(
+    () => controller.abort(new DOMException(`Supabase n'a pas répondu après ${requestTimeoutMs} ms.`, "TimeoutError")),
+    requestTimeoutMs
+  );
+
+  if (externalSignal?.aborted) {
+    abortFromExternalSignal();
+  } else {
+    externalSignal?.addEventListener("abort", abortFromExternalSignal, { once: true });
+  }
 
   try {
     return await fetch(input, {
       ...init,
-      signal: init?.signal || controller.signal
+      signal: controller.signal
     });
   } finally {
     clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", abortFromExternalSignal);
   }
 }
 

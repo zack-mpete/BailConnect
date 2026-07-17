@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError, getApiClient } from "@/app/api/_supabase";
+import { apiError, authFailureResponse, getApiClient } from "@/app/api/_supabase";
 import type { Role } from "@/types";
 
 type UserRow = {
@@ -23,8 +23,13 @@ export async function GET(req: NextRequest) {
   if (!client) return error;
 
   try {
-    const { data: authData, error: authError } = await client.auth.getUser();
-    if (authError || !authData.user) return apiError("Connexion requise.", 401);
+    const { data: authData, error: authError } = await client.auth.getUser().catch(error => ({
+      data: { user: null },
+      error
+    }));
+    if (authError || !authData.user) {
+      return authFailureResponse("[api/users/me] Vérification de session impossible.", authError);
+    }
 
     const [userResult, rolesResult] = await Promise.all([
       client
@@ -34,6 +39,23 @@ export async function GET(req: NextRequest) {
         .maybeSingle(),
       client.from("role").select("id,name,label,description")
     ]);
+
+    if (userResult.error) {
+      console.error("[api/users/me] Lecture du profil impossible.", {
+        userId: authData.user.id,
+        code: userResult.error.code,
+        error: userResult.error.message
+      });
+      return apiError("Profil utilisateur momentanément inaccessible.", 503);
+    }
+
+    if (rolesResult.error) {
+      console.error("[api/users/me] Lecture des rôles impossible.", {
+        code: rolesResult.error.code,
+        error: rolesResult.error.message
+      });
+      return apiError("Rôles utilisateur momentanément inaccessibles.", 503);
+    }
 
     const appUser = userResult.data as UserRow | null;
     const roles = ((rolesResult.data || []) as RoleRow[]) || [];
@@ -65,7 +87,11 @@ export async function GET(req: NextRequest) {
         role: { name: roleName || "locataire" }
       }
     });
-  } catch {
+  } catch (error) {
+    console.error("[api/users/me] Erreur Supabase inattendue.", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      error: error instanceof Error ? error.message : String(error)
+    });
     return apiError("Supabase est momentanément inaccessible.", 503);
   }
 }

@@ -48,3 +48,8 @@ supabase/
 # Database schemas and migrations
 **/migrations/
 **/*schema*.sql
+
+# Keep Supabase migrations versioned.
+!supabase/
+!supabase/migrations/
+!supabase/migrations/*.sql

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth-client";
+import { isKnownAppRoute, routes } from "@/lib/routes";
 import { getSupabaseAccessToken } from "@/lib/supabase";
 
 type NotificationRow = {
@@ -23,6 +24,7 @@ export function NotificationCenter() {
   const knownNotificationIds = useRef<Set<string>>(new Set());
   const initialLoadDone = useRef(false);
   const lastSoundAt = useRef(0);
+  const refreshInFlight = useRef(false);
 
   const unreadCount = useMemo(() => notifications.filter(item => !item.read_at).length, [notifications]);
 
@@ -57,27 +59,38 @@ export function NotificationCenter() {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!user || !notificationsAvailable) return;
-    const token = await getSupabaseAccessToken();
-    if (!token) return;
+    if (!user || !notificationsAvailable || refreshInFlight.current) return;
+    refreshInFlight.current = true;
 
-    const res = await fetch("/api/notifications", {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store"
-    });
-    if (!res.ok) return;
-    const body = await res.json().catch(() => null);
-    if (body?.notifications_available === false) {
-      setNotifications([]);
-      setNotificationsAvailable(false);
-      return;
+    try {
+      const token = await getSupabaseAccessToken();
+      if (!token) return;
+
+      const res = await fetch("/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"
+      });
+      if (!res.ok) return;
+      const body = await res.json().catch(() => null);
+      if (body?.notifications_available === false) {
+        setNotifications([]);
+        setNotificationsAvailable(false);
+        return;
+      }
+      const nextNotifications = (body?.notifications || []) as NotificationRow[];
+      const hasNewUnread = nextNotifications.some(item => !item.read_at && !knownNotificationIds.current.has(item.id));
+      knownNotificationIds.current = new Set(nextNotifications.map(item => item.id));
+      if (initialLoadDone.current && hasNewUnread) playNotificationSound();
+      initialLoadDone.current = true;
+      setNotifications(nextNotifications);
+    } catch (error) {
+      console.warn("[notification-center] Actualisation temporairement impossible.", {
+        name: error instanceof Error ? error.name : "UnknownError",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      refreshInFlight.current = false;
     }
-    const nextNotifications = (body?.notifications || []) as NotificationRow[];
-    const hasNewUnread = nextNotifications.some(item => !item.read_at && !knownNotificationIds.current.has(item.id));
-    knownNotificationIds.current = new Set(nextNotifications.map(item => item.id));
-    if (initialLoadDone.current && hasNewUnread) playNotificationSound();
-    initialLoadDone.current = true;
-    setNotifications(nextNotifications);
   }, [notificationsAvailable, playNotificationSound, user]);
 
   useEffect(() => {
@@ -91,9 +104,17 @@ export function NotificationCenter() {
 
     if (!notificationsAvailable) return;
 
-    refresh();
-    const timer = window.setInterval(refresh, 30000);
-    return () => window.clearInterval(timer);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    refreshWhenVisible();
+    const timer = window.setInterval(refreshWhenVisible, 30000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [notificationsAvailable, refresh, user]);
 
   useEffect(() => {
@@ -147,7 +168,7 @@ export function NotificationCenter() {
               notifications.map(item => (
                 <Link
                   key={item.id}
-                  href={item.url || "/dashboard"}
+                  href={isKnownAppRoute(item.url) ? item.url : routes.dashboard}
                   onClick={() => {
                     setOpen(false);
                     markRead(item.id);
