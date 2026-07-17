@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { notifyUsers } from "@/app/api/_notifications";
 import { getAppData } from "@/lib/data";
 import { apiError, getApiClient } from "@/app/api/_supabase";
 
@@ -132,6 +133,22 @@ export async function POST(req: NextRequest) {
 
   const { data, error: insertError } = await client.from("houses").insert(payload).select("*").single();
   if (insertError) return apiError(insertError.message, 400);
+
+  const { data: adminRole } = await client.from("role").select("id").eq("name", "admin").maybeSingle();
+  const { data: admins } = adminRole?.id
+    ? await client.from("users").select("id").eq("role_id", adminRole.id)
+    : { data: [] as Array<{ id: string }> };
+
+  await notifyUsers({
+    client,
+    actorId: authData.user.id,
+    recipientUserIds: (admins || []).map(admin => admin.id),
+    type: "house_publication_pending",
+    title: "Publication à valider",
+    body: `${parsedTitle} attend une validation administrative.`,
+    url: "/dashboard?section=publications",
+    metadata: { house_id: data.id }
+  });
 
   return NextResponse.json({ house: data }, { status: 201 });
 }

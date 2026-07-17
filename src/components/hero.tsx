@@ -17,11 +17,11 @@ export function Hero() {
           <div className="mb-4 inline-flex rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">Plateforme de location immobilière transparente</div>
           <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl">Trouver, louer et valider un bail depuis une seule interface.</h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-muted md:text-lg">BailConnect combine un fil d'actualité immobilier mobile-first, des dashboards par rôle et des contrats de bail avec accord des parties.</p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button href="/search" className="bg-ink text-white">Chercher une maison <ArrowRight size={17} /></Button>
-            <Button href="/dashboard?section=properties" className="bg-white text-ink shadow-card">Gerer mes biens</Button>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button href="/search" className="w-full bg-ink text-white sm:w-auto">Chercher une maison <ArrowRight size={17} /></Button>
+            <Button href="/dashboard?section=properties" className="w-full bg-white text-ink shadow-card sm:w-auto">Gerer mes biens</Button>
           </div>
-          <div className="mt-8 grid grid-cols-3 gap-3 text-sm">
+          <div className="mt-8 grid gap-3 text-sm min-[360px]:grid-cols-3">
             {highlights.map(({ Icon, label }) => (
               <div key={label} className="rounded-2xl bg-white p-3 font-semibold shadow-card">
                 <Icon className="mb-2 text-brand-600" size={20} />

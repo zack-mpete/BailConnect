@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Edit3, MessageCircle, Printer, RotateCcw, Save } from "lucide-react";
+import { CheckCircle2, Edit3, MessageCircle, Printer, RotateCcw, Save, ShieldX } from "lucide-react";
 import toast from "react-hot-toast";
 import { InternalMessageThread } from "@/components/internal-message-thread";
 import type { AppData, Contract, House } from "@/types";
 import { useCurrentUser } from "@/lib/auth-client";
 import { getSupabaseAccessToken, supabase } from "@/lib/supabase";
 import { money } from "@/lib/utils";
+import { CONTRACT_STATUS_LABELS } from "@/lib/statuses";
 
 type ContractWorkspaceProps = {
   requestedHouseId?: string | null;
@@ -47,6 +48,11 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
   const [editorDirty, setEditorDirty] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>("actions");
+  const [terminationOpen, setTerminationOpen] = useState(false);
+  const [terminationDate, setTerminationDate] = useState(new Date().toISOString().slice(0, 10));
+  const [terminationReason, setTerminationReason] = useState("");
+  const [terminationNote, setTerminationNote] = useState("");
+  const [terminating, setTerminating] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -54,28 +60,36 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
   const tenantName = contractState?.tenant || user?.fullName || "[NOM DU LOCATAIRE]";
   const rentAmount = contractState ? money(contractState.rent) : editableHouse ? money(editableHouse.price) : "[MONTANT DU LOYER]";
   const contractDuration = contractState?.duration || `${editableHouse?.contractDurationMonths || 12} mois`;
-  const depositAmount = editableHouse?.contractDeposit ? money(editableHouse.contractDeposit) : null;
-  const paymentTerms = editableHouse?.contractPaymentTerms?.trim();
-  const specialTerms = editableHouse?.contractSpecialTerms?.trim();
+  const depositValue = contractState?.contractDeposit ?? editableHouse?.contractDeposit;
+  const depositAmount = depositValue ? money(depositValue) : null;
+  const paymentTerms = (contractState?.contractPaymentTerms || editableHouse?.contractPaymentTerms)?.trim();
+  const specialTerms = (contractState?.contractSpecialTerms || editableHouse?.contractSpecialTerms)?.trim();
   const defaultTitle = "Contrat de bail a usage d'habitation";
   const agreementDate = contractState?.startDate || "[DATE D'ACCORD]";
   const tenantAgreed = Boolean(contractState?.agreedByTenantAt);
   const landlordAgreed = Boolean(contractState?.agreedByOwnerAt);
   const isOwner = Boolean(user?.id && editableHouse?.ownerId && user.id === editableHouse.ownerId);
-  const canEditContract = Boolean(user && editableHouse && (isOwner || user.role === "admin"));
+  const isTenant = Boolean(user?.id && contractState?.tenantId && user.id === contractState.tenantId);
+  const isContractParty = isOwner || isTenant;
+  const canEditContract = Boolean(user && editableHouse && !contractState && isOwner);
   const isLandlord = isOwner;
   const currentParty = isLandlord ? "bailleur" : "locataire";
   const messageRecipientId = isLandlord ? contractState?.tenantId : editableHouse?.ownerId;
   const canMarkAgreement = Boolean(
     user &&
+    (isOwner || isTenant) &&
     (
       contractState
-        ? !(isLandlord ? landlordAgreed : tenantAgreed)
-        : editableHouse && !isLandlord
+        ? ["brouillon", "pret_a_signer"].includes(contractState.status) && !(isLandlord ? landlordAgreed : tenantAgreed)
+        : false
     )
   );
   const agreementComplete = landlordAgreed && tenantAgreed;
-  const statusLabel = agreementComplete ? "Valide" : contractState ? "En attente" : "A initialiser";
+  const canPrintContract = Boolean(contractState && agreementComplete);
+  const canRequestTermination = Boolean(
+    contractState?.status === "signe" && isContractParty
+  );
+  const statusLabel = contractState ? CONTRACT_STATUS_LABELS[contractState.status] : "Aucun contrat";
 
   const defaultBody = useMemo(() => {
     const location = editableHouse ? `${editableHouse.commune}, ${editableHouse.city}` : "[LOCALISATION DU BIEN]";
@@ -146,13 +160,13 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
   }, [authLoading, editableHouse?.id, requestedHouseId, user]);
 
   useEffect(() => {
-    const nextTitle = editableHouse?.contractTitle?.trim() || defaultTitle;
-    const nextBody = editableHouse?.contractBody?.trim() || defaultBody;
+    const nextTitle = contractState?.contractTitle?.trim() || editableHouse?.contractTitle?.trim() || defaultTitle;
+    const nextBody = contractState?.contractBody?.trim() || editableHouse?.contractBody?.trim() || defaultBody;
     setEditorTitle(nextTitle);
     setEditorBody(nextBody);
     setEditorDirty(false);
     setEditorKey(value => value + 1);
-  }, [defaultBody, editableHouse?.contractBody, editableHouse?.contractTitle, editableHouse?.id]);
+  }, [contractState?.contractBody, contractState?.contractTitle, defaultBody, editableHouse?.contractBody, editableHouse?.contractTitle, editableHouse?.id]);
 
   useEffect(() => {
     async function loadContract() {
@@ -262,8 +276,8 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
     if (!user) return;
 
     try {
-      if (contractState && isLandlord ? landlordAgreed : tenantAgreed) return;
-      if (!contractState && isLandlord) throw new Error("Le bailleur ne peut pas creer un contrat sans locataire.");
+      if (!contractState) throw new Error("Une demande doit d’abord être acceptée par le bailleur.");
+      if (isLandlord ? landlordAgreed : tenantAgreed) return;
 
       const token = await getSupabaseAccessToken();
       if (!token) throw new Error("Connexion requise.");
@@ -274,7 +288,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(contractState ? { contract_id: contractState.id } : { house_id: editableHouse?.id })
+        body: JSON.stringify({ contract_id: contractState.id, action: "agree" })
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error || "Accord impossible a enregistrer.");
@@ -287,7 +301,48 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
     }
   }
 
+  async function requestTermination() {
+    if (!contractState) return;
+    const token = await getSupabaseAccessToken();
+    if (!token) {
+      toast.error("Connexion requise.");
+      return;
+    }
+
+    setTerminating(true);
+    try {
+      const response = await fetch("/api/contracts", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          contract_id: contractState.id,
+          action: "request_termination",
+          effective_date: terminationDate,
+          reason: terminationReason,
+          note: terminationNote
+        })
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error || "Résiliation impossible.");
+      setContractState(body.contract);
+      setTerminationOpen(false);
+      toast.success(body.contract.status === "resilie" ? "Contrat résilié." : "Résiliation programmée.");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Résiliation impossible.");
+    } finally {
+      setTerminating(false);
+    }
+  }
+
   function printContract() {
+    if (!canPrintContract) {
+      toast.error("L'impression est disponible après l'accord du bailleur et du locataire.");
+      return;
+    }
     const previousTitle = document.title;
     document.title = `Contrat - ${editableHouse?.title || "BailConnect"}`;
     window.print();
@@ -325,12 +380,12 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
           </div>
         </div>
 
-        <div className="contract-print-area contract-paper relative overflow-hidden rounded-2xl border border-white/70 bg-white p-5 shadow-card md:p-8">
-          <div className="absolute right-5 top-5 flex h-20 w-20 items-center justify-center rounded-full bg-red-50 text-center text-[10px] font-black seal md:h-24 md:w-24 md:text-xs">
+        <div className={`contract-print-area contract-paper relative overflow-hidden rounded-2xl border border-white/70 bg-white p-5 shadow-card md:p-8 ${canPrintContract ? "" : "print-locked"}`}>
+          <div className="mb-4 ml-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-center text-[9px] font-black seal sm:absolute sm:right-5 sm:top-5 sm:mb-0 sm:h-20 sm:w-20 md:h-24 md:w-24 md:text-xs">
             SCEAU<br />BAILCONNECT
           </div>
 
-          <article className="max-w-3xl space-y-5 pr-0 text-sm leading-7 text-slate-700 md:pr-28">
+          <article className="max-w-3xl min-w-0 space-y-5 pr-0 text-sm leading-7 text-slate-700 sm:pr-20 md:pr-28">
             {canEditContract && (
               <div className="print-hidden inline-flex rounded-full border border-brand-100 bg-brand-50 px-3 py-1 text-xs font-bold text-brand-900">
                 Edition directe active
@@ -444,7 +499,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
                 {!contractState && (
                   <div className="col-span-2 rounded-xl bg-amber-50 p-3 text-amber-900">
                     <p className="font-black">Aucun contrat actif</p>
-                    <p className="mt-1 text-xs">Le locataire peut l'initialiser ici.</p>
+                    <p className="mt-1 text-xs">Le locataire doit envoyer une demande, puis le bailleur doit l’accepter.</p>
                   </div>
                 )}
                 <div className="rounded-xl bg-slate-50 p-3">
@@ -464,9 +519,42 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
               <button onClick={markAgreement} disabled={!canMarkAgreement} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700 disabled:opacity-50">
                 <CheckCircle2 size={16} /> Valider comme {currentParty}
               </button>
-              <button type="button" onClick={printContract} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-bold text-white">
+              {canRequestTermination && (
+                <button
+                  type="button"
+                  onClick={() => setTerminationOpen(true)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-50 px-4 py-3 text-sm font-bold text-red-700"
+                >
+                  <ShieldX size={16} /> Résilier le contrat
+                </button>
+              )}
+              {contractState?.status === "resiliation_programmee" && (
+                <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-black">Résiliation programmée</p>
+                  <p className="mt-1">Date d’effet : {contractState.terminationEffectiveDate}</p>
+                  <p className="mt-1">{contractState.terminationReason}</p>
+                </div>
+              )}
+              {contractState?.status === "resilie" && (
+                <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">
+                  <p className="font-black">Contrat résilié</p>
+                  <p className="mt-1">{contractState.terminationReason}</p>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={printContract}
+                disabled={!canPrintContract}
+                title={!canPrintContract ? "Les deux parties doivent valider le contrat avant impression." : undefined}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+              >
                 <Printer size={16} /> Imprimer le contrat
               </button>
+              {!canPrintContract && (
+                <p className="text-xs font-semibold text-amber-700">
+                  Impression bloquée jusqu'à l'accord du bailleur et du locataire.
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-5">
@@ -477,17 +565,53 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
                 </div>
                 <MessageCircle className="text-brand-600" size={22} />
               </div>
-              {editableHouse && (
+              {editableHouse && isContractParty ? (
                 <InternalMessageThread
                   houseId={editableHouse.id}
                   recipientId={messageRecipientId}
                   emptyText="Aucun message. Le locataire et le proprietaire peuvent echanger ici."
                 />
+              ) : (
+                <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-muted">
+                  La conversation est réservée au bailleur et au locataire liés au contrat.
+                </p>
               )}
             </div>
           )}
         </div>
       </aside>
+      {terminationOpen && contractState && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="termination-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-soft">
+            <h2 id="termination-title" className="text-xl font-black">Résilier le contrat</h2>
+            <p className="mt-2 text-sm text-muted">
+              Une date future programmera la résiliation. Un administrateur devra la finaliser à l’échéance.
+            </p>
+            <label className="mt-4 block text-sm font-bold">
+              Date d’effet
+              <input type="date" value={terminationDate} onChange={event => setTerminationDate(event.target.value)} className="mt-2 form-control" />
+            </label>
+            <label className="mt-4 block text-sm font-bold">
+              Motif
+              <textarea autoFocus value={terminationReason} onChange={event => setTerminationReason(event.target.value)} rows={3} className="mt-2 form-control" />
+            </label>
+            <label className="mt-4 block text-sm font-bold">
+              Observation facultative
+              <textarea value={terminationNote} onChange={event => setTerminationNote(event.target.value)} rows={3} className="mt-2 form-control" />
+            </label>
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button onClick={() => setTerminationOpen(false)} className="rounded-full bg-slate-100 px-4 py-3 text-sm font-bold">Annuler</button>
+              <button
+                onClick={requestTermination}
+                disabled={terminating || !terminationDate || terminationReason.trim().length < 3}
+                className="rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {terminating ? "Enregistrement..." : "Confirmer la résiliation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

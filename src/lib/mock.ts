@@ -10,5 +10,5 @@ export type MockData = {
 };
 
 export async function getMockData(): Promise<MockData> {
-  return mockJson as MockData;
+  return mockJson as unknown as MockData;
 }

@@ -97,3 +97,15 @@ export async function getAuthenticatedUser(client: SupabaseClient, context: stri
 export function apiError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
+
+export function databaseErrorResponse(error: { code?: string; message?: string } | null | undefined) {
+  const code = error?.code || "";
+  const status =
+    code === "28000" ? 401 :
+    code === "42501" ? 403 :
+    code === "P0002" || code === "PGRST116" ? 404 :
+    code === "23505" || code === "23514" ? 409 :
+    400;
+
+  return apiError(error?.message || "Opération impossible.", status);
+}

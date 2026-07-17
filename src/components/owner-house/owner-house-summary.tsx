@@ -5,13 +5,15 @@ import { FileSignature } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { money } from "@/lib/utils";
 import type { Contract, House } from "@/types";
+import { PUBLICATION_STATUS_LABELS } from "@/lib/statuses";
 
 type OwnerHouseSummaryProps = {
   house: House;
   contracts: Contract[];
+  canEdit?: boolean;
 };
 
-export function OwnerHouseSummary({ house, contracts }: OwnerHouseSummaryProps) {
+export function OwnerHouseSummary({ house, contracts, canEdit = false }: OwnerHouseSummaryProps) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-card">
       {house.image && (
@@ -37,13 +39,19 @@ export function OwnerHouseSummary({ house, contracts }: OwnerHouseSummaryProps) 
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <a
-              href="#modifier-contrat"
-              className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-black text-white"
-            >
-              <FileSignature size={16} /> Modifier le contrat
-            </a>
+            {canEdit && (
+              <a
+                href="#modifier-contrat"
+                className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-black text-white"
+              >
+                <FileSignature size={16} /> Modifier le modèle
+              </a>
+            )}
+            {house.isArchived && <Badge tone="warn">Archivé</Badge>}
             <Badge tone={house.status === "Disponible" ? "success" : "warn"}>{house.status}</Badge>
+            <Badge tone={house.publicationStatus === "validee" ? "success" : "warn"}>
+              {PUBLICATION_STATUS_LABELS[house.publicationStatus]}
+            </Badge>
           </div>
         </div>
 
@@ -66,6 +74,11 @@ export function OwnerHouseSummary({ house, contracts }: OwnerHouseSummaryProps) 
           </div>
         </div>
       </div>
+      {house.publicationRejectionReason && (
+        <p className="mx-5 mb-5 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
+          Publication rejetée : {house.publicationRejectionReason}
+        </p>
+      )}
     </div>
   );
 }

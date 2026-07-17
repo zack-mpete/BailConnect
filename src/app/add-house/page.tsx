@@ -223,7 +223,7 @@ export default function AddHousePage() {
 
       formElement.reset();
       setLocation(null);
-      toast.success("Maison publiée.");
+      toast.success("Annonce envoyée pour validation administrative.");
       if (body?.house?.id) {
         router.replace(houseManagerHref(String(body.house.id)));
         router.refresh();
@@ -240,7 +240,7 @@ export default function AddHousePage() {
       <section className="mx-auto max-w-5xl px-4 py-8 md:px-6">
         <RoleGate allow={["admin", "bailleur", "agence"]} fallbackText="Seuls les bailleurs, agences et administrateurs peuvent publier une annonce.">
           <h1 className="text-3xl font-black">Ajouter une maison</h1>
-          <p className="mt-2 text-muted">Publie une annonce visible dans le fil immobilier après connexion.</p>
+          <p className="mt-2 text-muted">L’annonce sera visible publiquement après validation par un administrateur.</p>
           <form onSubmit={submit} className="mt-6 grid gap-5 lg:grid-cols-[1fr_.75fr]">
             <Card className="space-y-4">
               <label className="block text-sm font-bold">Titre<input name="title" required className="mt-2 form-control" placeholder="Maison moderne à Golf" /></label>
@@ -294,12 +294,12 @@ export default function AddHousePage() {
                 <label className="mt-4 block text-sm font-bold">Clauses particulières<textarea name="contract_special_terms" rows={4} className="mt-2 form-control" placeholder="Regles, charges incluses, entretien, conditions spécifiques..." /></label>
                 <label className="mt-4 block text-sm font-bold">Texte complet du contrat<textarea name="contract_body" rows={8} className="mt-2 form-control" placeholder="Texte complet optionnel du contrat..." /></label>
               </div>
-              <Button disabled={loading} className="w-full bg-ink text-white disabled:opacity-60">{loading ? "Publication..." : "Publier la maison"}</Button>
+              <Button disabled={loading} className="w-full bg-ink text-white disabled:opacity-60">{loading ? "Envoi..." : "Soumettre pour validation"}</Button>
             </Card>
             <Card className="space-y-4 bg-ink text-white">
               <div className="rounded-2xl bg-white/10 p-5"><ImagePlus/><h2 className="mt-4 text-xl font-black">Médias</h2><p className="mt-2 text-sm text-white/70">Ajoute une image nette qui montre réellement le bien.</p></div>
               <div className="rounded-2xl bg-white/10 p-5"><MapPin/><h2 className="mt-4 text-xl font-black">Localisation</h2><p className="mt-2 text-sm text-white/70">Ville et commune alimentent les filtres publics.</p></div>
-              <div className="rounded-2xl bg-white/10 p-5"><Home/><h2 className="mt-4 text-xl font-black">Statut</h2><p className="mt-2 text-sm text-white/70">Chaque nouvelle annonce démarre en Disponible.</p></div>
+              <div className="rounded-2xl bg-white/10 p-5"><Home/><h2 className="mt-4 text-xl font-black">Validation</h2><p className="mt-2 text-sm text-white/70">Chaque nouvelle annonce doit être validée par un administrateur.</p></div>
             </Card>
           </form>
         </RoleGate>

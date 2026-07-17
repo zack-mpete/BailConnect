@@ -32,14 +32,14 @@ export function AuthStatus({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Link href="/dashboard" className={cn("inline-flex min-w-0 items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800", compact && "max-w-[170px]")}>
+      <Link href="/dashboard" className={cn("inline-flex min-w-0 items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800", compact && "max-w-[170px] px-1 sm:px-3")}>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white"><UserRound size={16}/></span>
-        <span className="min-w-0">
+        <span className={cn("min-w-0", compact && "hidden sm:block")}>
           <span className="block truncate leading-4">{user.fullName}</span>
           <span className="block text-[11px] font-bold leading-4 text-brand-700">{user.role}</span>
         </span>
       </Link>
-      <button onClick={logout} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-card" aria-label="Se déconnecter"><LogOut size={17}/></button>
+      <button onClick={logout} className={cn("flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-card", compact && "hidden sm:flex")} aria-label="Se déconnecter"><LogOut size={17}/></button>
     </div>
   );
 }

@@ -16,7 +16,13 @@ Canonical schema file: [`../supabase-schema.sql`](../supabase-schema.sql)
 - `Disponible`
 - `Réservé`
 - `Loué`
-- `Archivé`
+- `Archivé` (legacy only; archival now uses `houses.is_archived`)
+
+### `publication_status`
+
+- `en_attente`
+- `validee`
+- `rejetee`
 
 ### `contract_status`
 
@@ -24,6 +30,8 @@ Canonical schema file: [`../supabase-schema.sql`](../supabase-schema.sql)
 - `pret_a_signer`
 - `signe`
 - `annule`
+- `resiliation_programmee`
+- `resilie`
 
 ## Tables
 
@@ -74,6 +82,13 @@ Rental listings published by admins, landlords, or agencies.
 | `rooms` | `int` | Room count |
 | `type` | `text` | Maison, Appartement, Villa, Studio |
 | `status` | `house_status` | Defaults to `Disponible` |
+| `publication_status` | `publication_status` | New listings default to `en_attente` |
+| `publication_reviewed_at` | `timestamptz` | Last moderation decision |
+| `publication_reviewed_by` | `uuid` | Administrator who reviewed the listing |
+| `publication_rejection_reason` | `text` | Required for a rejection |
+| `is_archived` | `boolean` | Hides the listing without changing its occupation status |
+| `archived_at` | `timestamptz` | Administrative archive timestamp |
+| `archived_by` | `uuid` | Administrator who archived the listing |
 | `image_url` | `text` | Public storage URL |
 | `features` | `text[]` | Amenities |
 | `created_at` | `timestamptz` | Defaults to `now()` |
@@ -91,6 +106,10 @@ Contract requests initiated by tenants.
 | `status` | `text` | `en_attente`, `approuvee`, `rejetee` |
 | `created_at` | `timestamptz` | Defaults to `now()` |
 | `updated_at` | `timestamptz` | Defaults to `now()` |
+| `decided_at` | `timestamptz` | Owner or owning agency decision date |
+| `decided_by` | `uuid` | Decision actor |
+| `decision_reason` | `text` | Refusal reason |
+| `cancelled_at` | `timestamptz` | Tenant cancellation date |
 
 ### `contracts`
 
@@ -113,6 +132,13 @@ Digital rental contracts.
 | `signed_by_owner_at` | `timestamptz` | Owner signature timestamp |
 | `signed_by_tenant_at` | `timestamptz` | Tenant signature timestamp |
 | `created_at` | `timestamptz` | Defaults to `now()` |
+| `contract_title`, `contract_body` | `text` | Immutable contract snapshot |
+| `contract_deposit` | `numeric(12,2)` | Deposit snapshot |
+| `contract_payment_terms`, `contract_special_terms` | `text` | Terms snapshot |
+| `termination_effective_date` | `date` | Immediate or future effective date |
+| `termination_reason`, `termination_note` | `text` | Termination details |
+| `termination_requested_at`, `terminated_at` | `timestamptz` | Audit timestamps |
+| `termination_requested_by`, `terminated_by` | `uuid` | Audit actors |
 
 ### `notifications`
 
@@ -171,21 +197,21 @@ house-images/{auth.uid()}/{timestamp}-{safe-file-name}
 
 ## Contract Workflow
 
-1. Tenant clicks `Demander un contrat`.
-2. A row is inserted into `rental_requests`.
+1. Tenant sends an occupation request for an approved, available listing.
+2. A row is inserted into `rental_requests` with `en_attente`.
 3. The owner receives an in-app notification and Web Push if enabled.
-4. Owner approves the request, creating a `contracts` row linked to `contract_request_id`.
+4. Owner approves the request atomically, creating a contract and reserving the house.
 5. Tenant receives a notification with `/contrats?house={id}`.
-6. Owner signs the contract.
-7. Tenant confirms agreement/signature.
+6. The first agreement freezes the contract snapshot (`pret_a_signer`).
+7. The second agreement signs the contract and marks the house as rented.
 8. Owner and admins receive notifications.
 
 ## RLS Summary
 
-- Public read: `role`, `houses`
+- Public read: `role`, and only approved, unarchived, available `houses`
 - Users: public read, own insert/update, admin update
 - Houses: owner/admin write restrictions
-- Rental requests: tenants create/read own; owners read/update requests for their houses
-- Contracts: participants read/update; owner inserts after request approval; admins read
+- Rental requests: tenants create/read own; only the owner or owning agency decides requests
+- Contracts: participants agree or request termination; admins have read-only access except finalizing due terminations
 - Notifications: recipients read/update own notifications
 - Push subscriptions: owners manage their own subscriptions

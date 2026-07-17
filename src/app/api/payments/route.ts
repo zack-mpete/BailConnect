@@ -23,6 +23,7 @@ type ContractRow = {
   house_id: string;
   owner_id: string;
   tenant_id: string;
+  status: string;
 };
 
 type UserNameRow = {
@@ -141,8 +142,8 @@ export async function POST(req: NextRequest) {
   if (authError || !authData.user) return apiError("Connexion requise.", 401);
 
   const role = await getCurrentRole(client, authData.user.id);
-  if (!["admin", "bailleur", "agence"].includes(role)) {
-    return apiError("Seul un bailleur, une agence ou un admin peut enregistrer un paiement.", 403);
+  if (!["bailleur", "agence"].includes(role)) {
+    return apiError("Seul le bailleur ou l'agence propriétaire peut enregistrer un paiement.", 403);
   }
 
   const houseId = body.house_id?.trim();
@@ -157,7 +158,7 @@ export async function POST(req: NextRequest) {
   if (houseError || !houseData) return apiError("Propriete introuvable.", 404);
   const house = houseData as HouseRow;
 
-  if (role !== "admin" && house.owner_id !== authData.user.id) {
+  if (house.owner_id !== authData.user.id) {
     return apiError("Tu ne peux enregistrer un paiement que sur tes propres proprietes.", 403);
   }
 
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
   if (contractId) {
     const { data: contractData, error: contractError } = await client
       .from("contracts")
-      .select("id,house_id,owner_id,tenant_id")
+      .select("id,house_id,owner_id,tenant_id,status")
       .eq("id", contractId)
       .maybeSingle();
 
@@ -174,6 +175,9 @@ export async function POST(req: NextRequest) {
     contract = contractData as ContractRow;
     if (contract.house_id !== house.id || contract.owner_id !== house.owner_id) {
       return apiError("Le contrat ne correspond pas a cette propriete.", 400);
+    }
+    if (!["signe", "resiliation_programmee"].includes(contract.status)) {
+      return apiError("Les paiements sont réservés aux contrats actifs.", 409);
     }
   }
 

@@ -1,4 +1,13 @@
 export type Role = "admin" | "bailleur" | "agence" | "locataire";
+export type PublicationStatus = "en_attente" | "validee" | "rejetee";
+export type RentalRequestStatus = "en_attente" | "approuvee" | "rejetee" | "annulee";
+export type ContractStatus =
+  | "brouillon"
+  | "pret_a_signer"
+  | "signe"
+  | "annule"
+  | "resiliation_programmee"
+  | "resilie";
 
 export type AppRole = {
   id: number;
@@ -30,6 +39,13 @@ export type House = {
   rooms: number;
   type: string;
   status: "Disponible" | "Réservé" | "Loué" | "Archivé";
+  publicationStatus: PublicationStatus;
+  publicationReviewedAt?: string | null;
+  publicationReviewedBy?: string | null;
+  publicationRejectionReason?: string | null;
+  isArchived: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
   currentTenantId?: string | null;
   currentTenant?: string | null;
   currentContractId?: string | null;
@@ -57,10 +73,40 @@ export type Contract = {
   startDate: string;
   duration: string;
   rent: number;
-  status: string;
+  status: ContractStatus;
   seal: string;
   agreedByOwnerAt?: string | null;
   agreedByTenantAt?: string | null;
+  contractTitle?: string | null;
+  contractBody?: string | null;
+  contractDeposit?: number | null;
+  contractPaymentTerms?: string | null;
+  contractSpecialTerms?: string | null;
+  terminationEffectiveDate?: string | null;
+  terminationReason?: string | null;
+  terminationNote?: string | null;
+  terminationRequestedAt?: string | null;
+  terminationRequestedBy?: string | null;
+  terminatedAt?: string | null;
+  terminatedBy?: string | null;
+};
+
+export type RentalRequest = {
+  id: string;
+  houseId: string;
+  houseTitle: string;
+  ownerId: string;
+  ownerName: string;
+  tenantId: string;
+  tenantName: string;
+  message?: string | null;
+  status: RentalRequestStatus;
+  decisionReason?: string | null;
+  decidedAt?: string | null;
+  decidedBy?: string | null;
+  cancelledAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type Payment = {
@@ -84,6 +130,7 @@ export type AppData = {
   users: AppUser[];
   roles: AppRole[];
   houses: House[];
+  rentalRequests: RentalRequest[];
   contracts: Contract[];
   payments: Payment[];
   stats: { houses: number; contracts: number; users: number };

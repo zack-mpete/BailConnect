@@ -156,7 +156,7 @@ export function NotificationCenter() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-soft">
+        <div className="fixed left-3 right-3 top-16 z-50 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-soft sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[min(360px,calc(100vw-2rem))]">
           <div className="border-b border-slate-100 p-4">
             <p className="font-black">Notifications</p>
             <p className="text-xs font-semibold text-muted">{unreadCount} non lue{unreadCount > 1 ? "s" : ""}</p>

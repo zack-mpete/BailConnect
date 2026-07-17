@@ -5,16 +5,21 @@ import Image from "next/image";
 import { MapPin } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
 import { useCurrentUser } from "@/lib/auth-client";
-import { houseContractHref, houseContractsHref } from "@/lib/house-links";
+import { canManageHouse, houseContractHref, houseManagerHref } from "@/lib/house-links";
 import { loginHref, routes } from "@/lib/routes";
 import { getSupabaseAccessToken } from "@/lib/supabase";
 import { money } from "@/lib/utils";
 import type { AppData, House } from "@/types";
+import toast from "react-hot-toast";
 
 export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; initialHouse: House | null }) {
   const { user, loading: authLoading } = useCurrentUser();
   const [house, setHouse] = useState(initialHouse);
   const [loading, setLoading] = useState(!initialHouse);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requesting, setRequesting] = useState(false);
+  const [hasContract, setHasContract] = useState(false);
 
   useEffect(() => {
     setHouse(initialHouse);
@@ -45,6 +50,7 @@ export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; 
 
         const data = (await response.json()) as AppData;
         setHouse(data.houses.find(item => item.id === houseId) || null);
+        setHasContract(data.contracts.some(contract => contract.houseId === houseId));
       } finally {
         setLoading(false);
       }
@@ -70,9 +76,36 @@ export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; 
     );
   }
 
-  const contractHref = user
-    ? houseContractHref(house, user)
-    : loginHref(houseContractsHref(house.id));
+  const ownsHouse = canManageHouse(user, house);
+
+  async function submitRequest() {
+    const token = await getSupabaseAccessToken();
+    if (!token) {
+      toast.error("Connexion requise.");
+      return;
+    }
+
+    setRequesting(true);
+    try {
+      const response = await fetch("/api/rental-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ house_id: house!.id, message: requestMessage })
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error || "Demande impossible.");
+      toast.success("Demande envoyée au bailleur.");
+      setRequestOpen(false);
+      setRequestMessage("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Demande impossible.");
+    } finally {
+      setRequesting(false);
+    }
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
@@ -93,8 +126,62 @@ export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; 
         <p className="leading-7 text-slate-600">{house.description}</p>
         <div className="flex flex-wrap gap-2">{house.features.map(feature => <span key={feature} className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold">{feature}</span>)}</div>
         <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-900"><b>Vision future :</b> une visite 3D sera ajoutée plus tard à partir de modèles .glb ou scans optimisés.</div>
-        <Button href={contractHref} className="w-full bg-ink text-white">{user ? "Ouvrir le contrat" : "Se connecter pour contacter"}</Button>
+        {user?.role === "locataire" && hasContract ? (
+          <Button href={houseContractHref(house)} className="w-full bg-ink text-white">
+            Ouvrir mon contrat
+          </Button>
+        ) : user?.role === "locataire" ? (
+          <button
+            type="button"
+            onClick={() => setRequestOpen(true)}
+            className="inline-flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-bold text-white"
+          >
+            Demander à occuper ce bien
+          </button>
+        ) : user?.role === "admin" ? (
+          <Button href={houseManagerHref(house.id)} className="w-full bg-ink text-white">
+            Consulter dans le centre de contrôle
+          </Button>
+        ) : ownsHouse ? (
+          <Button href={houseManagerHref(house.id)} className="w-full bg-ink text-white">
+            Gérer ce bien
+          </Button>
+        ) : user ? (
+          <Button href={routes.search} className="w-full bg-brand-50 text-brand-700">
+            Voir les autres annonces
+          </Button>
+        ) : (
+          <Button href={loginHref(`/houses/${house.id}`)} className="w-full bg-ink text-white">
+            Se connecter pour envoyer une demande
+          </Button>
+        )}
       </Card>
+      {requestOpen && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rental-request-title">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-soft">
+            <h2 id="rental-request-title" className="text-xl font-black">Demande d’occupation</h2>
+            <p className="mt-2 text-sm text-muted">{house.title}</p>
+            <label className="mt-4 block text-sm font-bold">
+              Message au bailleur (facultatif)
+              <textarea
+                autoFocus
+                maxLength={1000}
+                value={requestMessage}
+                onChange={event => setRequestMessage(event.target.value)}
+                rows={5}
+                className="mt-2 form-control"
+                placeholder="Présente brièvement ta demande..."
+              />
+            </label>
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button onClick={() => setRequestOpen(false)} className="rounded-full bg-slate-100 px-4 py-3 text-sm font-bold">Annuler</button>
+              <button onClick={submitRequest} disabled={requesting} className="rounded-full bg-ink px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+                {requesting ? "Envoi..." : "Envoyer la demande"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

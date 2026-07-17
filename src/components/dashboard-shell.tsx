@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { motion, useReducedMotion } from "framer-motion";
 import { RoleGate } from "@/components/role-gate";
 import type { AppData } from "@/types";
 
@@ -13,10 +14,18 @@ const UserDashboard = dynamic(() => import("@/components/user-dashboard").then(m
 });
 
 export function DashboardShell({ data }: { data: AppData }) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <RoleGate allow={["admin", "bailleur", "agence", "locataire"]} fallbackText="Connecte-toi pour ouvrir ton tableau de bord.">
-      <AdminDashboard initialData={data} />
-      <UserDashboard data={data} />
-    </RoleGate>
+    <motion.div
+      initial={{ opacity: 0, y: reduceMotion ? 0 : 18, scale: reduceMotion ? 1 : 0.992 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: reduceMotion ? 0.15 : 0.48, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <RoleGate allow={["admin", "bailleur", "agence", "locataire"]} fallbackText="Connecte-toi pour ouvrir ton tableau de bord.">
+        <AdminDashboard initialData={data} />
+        <UserDashboard data={data} />
+      </RoleGate>
+    </motion.div>
   );
 }

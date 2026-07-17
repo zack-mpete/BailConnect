@@ -78,6 +78,33 @@ async function canOwnerMessageRecipient(
   return Boolean(contractResult.data || messageResult.data);
 }
 
+async function canTenantMessageOwner(
+  client: NonNullable<ReturnType<typeof getApiClient>["client"]>,
+  houseId: string,
+  tenantId: string,
+  ownerId: string
+) {
+  const [contractResult, requestResult] = await Promise.all([
+    client
+      .from("contracts")
+      .select("id")
+      .eq("house_id", houseId)
+      .eq("owner_id", ownerId)
+      .eq("tenant_id", tenantId)
+      .limit(1)
+      .maybeSingle(),
+    client
+      .from("rental_requests")
+      .select("id")
+      .eq("house_id", houseId)
+      .eq("tenant_id", tenantId)
+      .limit(1)
+      .maybeSingle()
+  ]);
+
+  return Boolean(contractResult.data || requestResult.data);
+}
+
 function serializeMessages(rows: MessageRow[], names: Map<string, string>) {
   return rows.map(row => ({
     id: row.id,
@@ -207,6 +234,9 @@ export async function POST(req: NextRequest) {
 
   if (isOwner && !(await canOwnerMessageRecipient(client, house.id, senderId, recipientId))) {
     return apiError("Le propriétaire ne peut écrire qu'à un utilisateur lié à cette maison.", 403);
+  }
+  if (!isOwner && !(await canTenantMessageOwner(client, house.id, senderId, house.owner_id))) {
+    return apiError("Seuls le propriétaire et un locataire lié à cette maison peuvent écrire dans cette conversation.", 403);
   }
 
   const { data, error: insertError } = await client

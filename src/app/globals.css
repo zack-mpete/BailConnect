@@ -146,6 +146,25 @@
     visibility: visible;
   }
 
+  .contract-print-area.print-locked,
+  .contract-print-area.print-locked * {
+    visibility: hidden !important;
+  }
+
+  .contract-print-area.print-locked::after {
+    content: "Impression indisponible : le bailleur et le locataire doivent d'abord valider le contrat.";
+    visibility: visible !important;
+    position: fixed;
+    inset: 20mm;
+    display: grid;
+    place-items: center;
+    border: 2px solid #b45309;
+    color: #92400e;
+    font-size: 16pt;
+    font-weight: 700;
+    text-align: center;
+  }
+
   .contract-print-area {
     position: absolute !important;
     inset: 0 auto auto 0;

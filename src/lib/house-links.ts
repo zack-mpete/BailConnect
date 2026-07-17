@@ -14,7 +14,15 @@ const managerSectionHash: Record<ManagerHouseSection, string> = {
 };
 
 export function canManageHouse(user: HouseLinkUser, house: Pick<House, "ownerId">) {
-  return Boolean(user && (user.role === "admin" || user.id === house.ownerId));
+  return Boolean(
+    user
+    && ["bailleur", "agence"].includes(user.role)
+    && user.id === house.ownerId
+  );
+}
+
+export function canInspectHouse(user: HouseLinkUser, house: Pick<House, "ownerId">) {
+  return Boolean(user?.role === "admin" || canManageHouse(user, house));
 }
 
 export function housePublicHref(houseId: string) {
@@ -30,13 +38,11 @@ export function houseContractsHref(houseId: string) {
 }
 
 export function houseDetailHref(house: Pick<House, "id" | "ownerId">, user?: HouseLinkUser, section?: ManagerHouseSection) {
-  return canManageHouse(user, house)
+  return canInspectHouse(user, house)
     ? houseManagerHref(house.id, section)
     : housePublicHref(house.id);
 }
 
-export function houseContractHref(house: Pick<House, "id" | "ownerId">, user?: HouseLinkUser) {
-  return canManageHouse(user, house)
-    ? houseManagerHref(house.id, "contract")
-    : houseContractsHref(house.id);
+export function houseContractHref(house: Pick<House, "id">) {
+  return houseContractsHref(house.id);
 }

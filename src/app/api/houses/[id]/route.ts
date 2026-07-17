@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError, getApiClient } from "@/app/api/_supabase";
+import { notifyUsers } from "@/app/api/_notifications";
 import { getHouse } from "@/lib/data";
 
 async function getRoleName(client: NonNullable<ReturnType<typeof getApiClient>["client"]>, userId: string) {
@@ -37,7 +38,7 @@ async function requireHouseContractManager(req: NextRequest, houseId: string) {
   if (authError || !authData.user) return { client: null, response: apiError("Connexion requise.", 401) };
 
   const role = await getRoleName(client, authData.user.id);
-  if (!["admin", "bailleur", "agence"].includes(role || "")) {
+  if (!["bailleur", "agence"].includes(role || "")) {
     return { client: null, response: apiError("Role non autorise pour personnaliser le contrat.", 403) };
   }
 
@@ -48,7 +49,7 @@ async function requireHouseContractManager(req: NextRequest, houseId: string) {
     .single();
 
   if (houseError || !house) return { client: null, response: apiError("Maison introuvable.", 404) };
-  if (role !== "admin" && house.owner_id !== authData.user.id) {
+  if (house.owner_id !== authData.user.id) {
     return { client: null, response: apiError("Tu ne peux personnaliser que tes propres maisons.", 403) };
   }
 
@@ -85,7 +86,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json().catch(() => null) as {
-    action?: "archive" | "restore" | "validate" | "update_contract_terms";
+    action?: "archive" | "restore" | "approve" | "reject" | "validate" | "update_contract_terms";
+    reason?: unknown;
     contract_duration_months?: unknown;
     contract_deposit?: unknown;
     contract_payment_terms?: unknown;
@@ -127,17 +129,66 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!client) return response;
 
   const { action } = body;
-  const nextStatus = action === "archive" ? "Archivé" : action === "restore" || action === "validate" ? "Disponible" : null;
-  if (!nextStatus) return apiError("Action invalide.");
-
-  const { data, error } = await client
+  const { data: authData } = await client.auth.getUser();
+  const { data: currentHouse, error: currentError } = await client
     .from("houses")
-    .update({ status: nextStatus })
+    .select("id,owner_id,title,status,current_contract_id,is_archived")
     .eq("id", id)
-    .select("*")
     .single();
+  if (currentError || !currentHouse) return apiError("Maison introuvable.", 404);
+
+  let patch: Record<string, unknown>;
+  if (action === "approve" || action === "validate") {
+    patch = {
+      publication_status: "validee",
+      publication_reviewed_at: new Date().toISOString(),
+      publication_reviewed_by: authData.user?.id || null,
+      publication_rejection_reason: null
+    };
+  } else if (action === "reject") {
+    const reason = optionalText(body.reason);
+    if (!reason || reason.length < 3) return apiError("Le motif du rejet est requis.");
+    patch = {
+      publication_status: "rejetee",
+      publication_reviewed_at: new Date().toISOString(),
+      publication_reviewed_by: authData.user?.id || null,
+      publication_rejection_reason: reason
+    };
+  } else if (action === "archive") {
+    if (currentHouse.is_archived) return apiError("Ce bien est déjà archivé.", 409);
+    patch = {
+      is_archived: true,
+      archived_at: new Date().toISOString(),
+      archived_by: authData.user?.id || null
+    };
+  } else if (action === "restore") {
+    if (!currentHouse.is_archived) return apiError("Seul un bien archivé peut être restauré.", 409);
+    patch = {
+      is_archived: false,
+      archived_at: null,
+      archived_by: null
+    };
+  } else {
+    return apiError("Action invalide.");
+  }
+
+  const { data, error } = await client.from("houses").update(patch).eq("id", id).select("*").single();
 
   if (error) return apiError(error.message, 400);
+  if (action === "approve" || action === "validate" || action === "reject") {
+    await notifyUsers({
+      client,
+      actorId: authData.user!.id,
+      recipientUserIds: [currentHouse.owner_id],
+      type: action === "reject" ? "house_publication_rejected" : "house_publication_approved",
+      title: action === "reject" ? "Publication rejetée" : "Publication validée",
+      body: action === "reject"
+        ? `${currentHouse.title} doit être corrigée avant publication.`
+        : `${currentHouse.title} est maintenant visible publiquement.`,
+      url: `/dashboard/houses/${id}`,
+      metadata: { house_id: id, reason: action === "reject" ? patch.publication_rejection_reason : null }
+    });
+  }
   return NextResponse.json({ house: data });
 }
 
@@ -145,6 +196,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id } = await params;
   const { client, response } = await requireAdmin(req);
   if (!client) return response;
+
+  const { data: house } = await client
+    .from("houses")
+    .select("id,status,current_contract_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!house) return apiError("Maison introuvable.", 404);
+  if (house.current_contract_id || ["Réservé", "Loué"].includes(house.status)) {
+    return apiError("Un bien réservé ou loué ne peut pas être supprimé.", 409);
+  }
 
   const { error } = await client.from("houses").delete().eq("id", id);
   if (error) return apiError(error.message, 400);

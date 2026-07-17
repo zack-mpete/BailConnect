@@ -67,6 +67,21 @@ Une vue lisible des tables, relations, policies et workflows est disponible ici 
 docs/database-structure.md
 ```
 
+Pour une base existante, appliquer dans Supabase SQL Editor, dans cet ordre :
+
+```txt
+supabase/migrations/202607170002_moderation_requests_termination_schema.sql
+supabase/migrations/202607170003_moderation_requests_termination_workflows.sql
+supabase/migrations/202607180001_archiving_and_contract_role_restrictions.sql
+```
+
+Puis exécuter le contrôle en lecture seule :
+
+```txt
+supabase/verify/202607170003_workflows.sql
+supabase/verify/202607180001_archiving_and_roles.sql
+```
+
 ## Pages incluses
 
 | Page | Route | Statut |

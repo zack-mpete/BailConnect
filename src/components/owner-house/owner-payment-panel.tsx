@@ -40,6 +40,10 @@ export function OwnerPaymentPanel({ activeContract, house, payments, onPaymentCr
 
   async function savePayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!activeContract) {
+      toast.error("Aucun contrat actif pour enregistrer un paiement.");
+      return;
+    }
 
     const token = await getSupabaseAccessToken();
     if (!token) {
@@ -92,6 +96,11 @@ export function OwnerPaymentPanel({ activeContract, house, payments, onPaymentCr
         Paiement recu pour cette propriete. Le nom de l'occupant est prerempli si un contrat actif existe.
       </p>
 
+      {!activeContract && (
+        <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+          Aucun nouveau paiement ne peut être ajouté sans contrat signé actif.
+        </p>
+      )}
       <form onSubmit={savePayment} className="mt-4 grid gap-4">
         <label className="block text-sm font-bold">
           Occupant
@@ -173,7 +182,7 @@ export function OwnerPaymentPanel({ activeContract, house, payments, onPaymentCr
         </label>
 
         <button
-          disabled={savingPayment}
+          disabled={savingPayment || !activeContract}
           className="inline-flex w-fit items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
         >
           <Save size={16} /> {savingPayment ? "Enregistrement..." : "Enregistrer le paiement"}

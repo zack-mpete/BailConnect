@@ -86,7 +86,7 @@ export function OwnerContractEditor({ house, onHouseUpdated }: OwnerContractEdit
     <div id="modifier-contrat" className="surface-card ring-2 ring-brand-50">
       <div className="flex items-center gap-2">
         <FileSignature className="text-brand-600" size={20} />
-        <h2 className="text-xl font-black">Modifier le contrat</h2>
+        <h2 className="text-xl font-black">Modèle des futurs contrats</h2>
       </div>
       <p className="mt-2 text-sm text-muted">
         Ces conditions seront reprises dans le contrat de cette maison : duree, depot, paiement et clauses particulieres.

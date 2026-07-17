@@ -13,7 +13,7 @@ import { getSupabaseAccessToken } from "@/lib/supabase";
 import type { AppData, AppUser, House, Role } from "@/types";
 
 type AdminSection = "overview" | "contracts" | "publications" | "users" | "map";
-type PublicationAction = "archive" | "restore" | "validate" | "delete";
+type PublicationAction = "archive" | "restore" | "approve" | "reject" | "delete";
 
 function isAdminSection(value: string | null): value is AdminSection {
   return value === "overview" || value === "contracts" || value === "publications" || value === "users" || value === "map";
@@ -21,9 +21,9 @@ function isAdminSection(value: string | null): value is AdminSection {
 
 const navigation: Array<{ id: AdminSection; label: string; description: string; Icon: typeof BarChart3 }> = [
   { id: "overview", label: "Vue d'ensemble", description: "Indicateurs et activité récente", Icon: BarChart3 },
-  { id: "contracts", label: "Historique", description: "Contrats et accords", Icon: FileSignature },
-  { id: "publications", label: "Publications", description: "Modération des annonces", Icon: Archive },
-  { id: "users", label: "Utilisateurs", description: "Comptes et rôles", Icon: Users },
+  { id: "contracts", label: "Contrats", description: "Liste des contrats et accords", Icon: FileSignature },
+  { id: "publications", label: "Publications", description: "Liste et modération des annonces", Icon: Archive },
+  { id: "users", label: "Utilisateurs", description: "Liste des comptes et rôles", Icon: Users },
   { id: "map", label: "Map", description: "Biens et zones actives", Icon: Map }
 ];
 
@@ -84,7 +84,14 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
-  async function updateHouse(house: House, action: PublicationAction) {
+  function sectionCount(target: AdminSection) {
+    if (target === "contracts") return data.contracts.length;
+    if (target === "publications" || target === "map") return data.houses.length;
+    if (target === "users") return data.users.length;
+    return null;
+  }
+
+  async function updateHouse(house: House, action: PublicationAction, reason?: string) {
     const token = await getSupabaseAccessToken();
     if (!token) return;
 
@@ -94,7 +101,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: action === "delete" ? undefined : JSON.stringify({ action })
+      body: action === "delete" ? undefined : JSON.stringify({ action, reason })
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
@@ -108,7 +115,15 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
       return;
     }
 
-    toast.success(action === "delete" ? "Publication supprimée." : action === "validate" ? "Publication validée." : "Publication mise à jour.");
+    toast.success(
+      action === "delete"
+        ? "Publication supprimée."
+        : action === "approve"
+          ? "Publication validée."
+          : action === "reject"
+            ? "Publication rejetée."
+            : "Publication mise à jour."
+    );
     await refresh();
   }
 
@@ -134,12 +149,33 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
     await refresh();
   }
 
+  async function finalizeTermination(contractId: string) {
+    const token = await getSupabaseAccessToken();
+    if (!token) return;
+
+    const response = await fetch("/api/contracts", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ contract_id: contractId, action: "finalize_termination" })
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      toast.error(body?.error || "Finalisation impossible.");
+      return;
+    }
+    toast.success("Résiliation finalisée.");
+    await refresh();
+  }
+
   if (user?.role !== "admin") return null;
 
   return (
-    <section className="rounded-2xl bg-slate-100 p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
+    <section className="rounded-2xl bg-gradient-to-br from-slate-100 via-cyan-50/60 to-white p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
       <div className="grid gap-3 lg:h-full lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-2xl bg-ink p-4 text-white lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
+        <aside className="rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900 to-cyan-950 p-4 text-white shadow-soft lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase text-white/50">Admin</p>
@@ -149,12 +185,25 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
               <RefreshCw size={17} />
             </button>
           </div>
-          <nav className="mt-6 grid gap-2">
+          <nav className="mt-6 flex gap-2 overflow-x-auto pb-2 scrollbar-soft lg:grid lg:overflow-visible lg:pb-0">
             {navigation.map(({ id, label, description, Icon }) => (
-              <button key={id} onClick={() => selectSection(id)} className={`flex items-center gap-3 rounded-2xl p-3 text-left transition ${section === id ? "bg-white text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
+              <button
+                key={id}
+                type="button"
+                aria-pressed={section === id}
+                onClick={() => selectSection(id)}
+                className={`flex min-w-[190px] items-center gap-3 rounded-2xl p-3 text-left transition lg:min-w-0 ${section === id ? "bg-white text-ink shadow-card" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+              >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${section === id ? "bg-brand-50 text-brand-700" : "bg-white/10"}`}><Icon size={18} /></span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-black">{label}</span>
+                  <span className="flex items-center justify-between gap-2 text-sm font-black">
+                    <span>{label}</span>
+                    {sectionCount(id) !== null && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] ${section === id ? "bg-slate-100 text-slate-700" : "bg-white/10 text-white"}`}>
+                        {sectionCount(id)}
+                      </span>
+                    )}
+                  </span>
                   <span className={`block text-xs ${section === id ? "text-slate-500" : "text-white/45"}`}>{description}</span>
                 </span>
               </button>
@@ -162,12 +211,14 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
           </nav>
         </aside>
 
-        <div className="min-w-0 rounded-2xl bg-slate-50 p-2 md:p-3 lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
-          {section === "overview" && <AdminOverview data={data} />}
-          {section === "contracts" && <AdminContracts contracts={data.contracts} />}
-          {section === "publications" && <AdminPublications houses={data.houses} onAction={updateHouse} />}
-          {section === "users" && <AdminUsers users={data.users} roles={data.roles} onRoleChange={updateUserRole} />}
-          {section === "map" && <DashboardMap houses={data.houses} title="Vue map plateforme" subtitle="Répartition des annonces, statuts et zones actives." />}
+        <div className="min-w-0 rounded-2xl bg-white/70 p-2 shadow-inner backdrop-blur-sm md:p-3 lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
+          <div key={section} className="animate-[fadeIn_.2s_ease-out]">
+            {section === "overview" && <AdminOverview data={data} />}
+            {section === "contracts" && <AdminContracts contracts={data.contracts} onFinalize={contract => finalizeTermination(contract.id)} />}
+            {section === "publications" && <AdminPublications houses={data.houses} onAction={updateHouse} />}
+            {section === "users" && <AdminUsers users={data.users} roles={data.roles} onRoleChange={updateUserRole} />}
+            {section === "map" && <DashboardMap houses={data.houses} title="Vue map plateforme" subtitle="Répartition des annonces, statuts et zones actives." />}
+          </div>
         </div>
       </div>
     </section>

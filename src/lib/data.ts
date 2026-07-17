@@ -29,6 +29,13 @@ type HouseRow = {
   rooms: number;
   type: string;
   status: House["status"];
+  publication_status: House["publicationStatus"];
+  publication_reviewed_at?: string | null;
+  publication_reviewed_by?: string | null;
+  publication_rejection_reason?: string | null;
+  is_archived: boolean;
+  archived_at?: string | null;
+  archived_by?: string | null;
   current_tenant_id?: string | null;
   current_contract_id?: string | null;
   image_url: string | null;
@@ -52,6 +59,7 @@ function emptyData(): AppData {
     users: [],
     roles: [],
     houses: [],
+    rentalRequests: [],
     contracts: [],
     payments: [],
     stats: { houses: 0, contracts: 0, users: 0 }
@@ -62,6 +70,11 @@ async function getFallbackData(): Promise<AppData> {
   const mock = await getMockData();
   return {
     ...mock,
+    houses: mock.houses.map(house => ({
+      ...house,
+      publicationStatus: house.publicationStatus || "validee",
+      isArchived: house.isArchived || false
+    })),
     roles: [],
     users: mock.users.map(user => ({
       id: user.id,
@@ -70,6 +83,7 @@ async function getFallbackData(): Promise<AppData> {
       phone: user.phone,
       verified: user.verified
     })),
+    rentalRequests: [],
     payments: mock.payments || []
   };
 }
@@ -104,6 +118,13 @@ export function toHouse(row: HouseRow, usersById: Map<string, string> = new Map(
     rooms: row.rooms,
     type: row.type,
     status: row.status,
+    publicationStatus: row.publication_status,
+    publicationReviewedAt: row.publication_reviewed_at || null,
+    publicationReviewedBy: row.publication_reviewed_by || null,
+    publicationRejectionReason: row.publication_rejection_reason || null,
+    isArchived: row.is_archived,
+    archivedAt: row.archived_at || null,
+    archivedBy: row.archived_by || null,
     currentTenantId: null,
     currentTenant: null,
     currentContractId: null,
@@ -141,7 +162,10 @@ export async function getAppData(): Promise<AppData> {
     client.from("users").select("id,full_name"),
     client
       .from("houses")
-      .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+      .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,publication_status,is_archived,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+      .eq("publication_status", "validee")
+      .eq("is_archived", false)
+      .eq("status", "Disponible")
       .order("created_at", { ascending: false })
   ]).catch(() => null);
 
@@ -163,6 +187,7 @@ export async function getAppData(): Promise<AppData> {
     users: [],
     roles,
     houses,
+    rentalRequests: [],
     contracts: [],
     payments: [],
     stats: {
@@ -193,8 +218,11 @@ export async function getHouse(id: string) {
 
   const { data, error } = await client
     .from("houses")
-    .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+    .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,publication_status,is_archived,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
     .eq("id", id)
+    .eq("publication_status", "validee")
+    .eq("is_archived", false)
+    .eq("status", "Disponible")
     .maybeSingle();
 
   if (error || !data) return null;

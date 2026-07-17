@@ -1,20 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Building2, CalendarClock, FileSignature, Home, Map, MessageSquare, PlusCircle, Search, WalletCards } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BarChart3, Building2, CalendarClock, ClipboardList, FileSignature, Home, Map, MessageSquare, PlusCircle, Search, WalletCards } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { DashboardMap } from "@/components/dashboard-map";
 import { InternalMessageThread } from "@/components/internal-message-thread";
+import { RentalRequestsPanel } from "@/components/rental-requests-panel";
 import { useCurrentUser } from "@/lib/auth-client";
 import { houseContractHref, houseContractsHref, houseDetailHref, houseManagerHref, housePublicHref } from "@/lib/house-links";
 import { getSupabaseAccessToken } from "@/lib/supabase";
 import { money } from "@/lib/utils";
+import { CONTRACT_STATUS_LABELS } from "@/lib/statuses";
 import type { AppData, Contract, House, Payment, Role } from "@/types";
 
-type UserSection = "overview" | "payments" | "properties" | "contracts" | "messages" | "map";
+type UserSection = "overview" | "payments" | "properties" | "requests" | "contracts" | "messages" | "map";
 
-const userSections: UserSection[] = ["overview", "payments", "properties", "contracts", "messages", "map"];
+const userSections: UserSection[] = ["overview", "payments", "properties", "requests", "contracts", "messages", "map"];
 
 function isUserSection(value: string | null): value is UserSection {
   return Boolean(value && userSections.includes(value as UserSection));
@@ -35,6 +37,7 @@ const roleMeta: Record<Exclude<Role, "admin">, { title: string; label: string; n
       { id: "overview", label: "Vue d'ensemble", description: "Revenus, biens et alertes", Icon: BarChart3 },
       { id: "payments", label: "Paiements", description: "Loyers, retards et relances", Icon: WalletCards },
       { id: "properties", label: "Possessions", description: "Biens a gerer", Icon: Home },
+      { id: "requests", label: "Demandes", description: "Candidatures reçues", Icon: ClipboardList },
       { id: "contracts", label: "Contrats", description: "Baux et accords", Icon: FileSignature },
       { id: "messages", label: "Messagerie", description: "Conversations", Icon: MessageSquare },
       { id: "map", label: "Carte", description: "Portefeuille", Icon: Map }
@@ -47,6 +50,7 @@ const roleMeta: Record<Exclude<Role, "admin">, { title: string; label: string; n
       { id: "overview", label: "Vue d'ensemble", description: "Portefeuille et activité", Icon: BarChart3 },
       { id: "payments", label: "Encaissements", description: "Suivi locataires", Icon: WalletCards },
       { id: "properties", label: "Possessions", description: "Mandats et occupation", Icon: Building2 },
+      { id: "requests", label: "Demandes", description: "Candidatures reçues", Icon: ClipboardList },
       { id: "contracts", label: "Contrats", description: "Clients et demandes", Icon: FileSignature },
       { id: "messages", label: "Messagerie", description: "Conversations", Icon: MessageSquare },
       { id: "map", label: "Carte", description: "Repartition des biens", Icon: Map }
@@ -59,6 +63,7 @@ const roleMeta: Record<Exclude<Role, "admin">, { title: string; label: string; n
       { id: "overview", label: "Vue d'ensemble", description: "Dossier et prochaines actions", Icon: BarChart3 },
       { id: "payments", label: "Mes paiements", description: "Loyer et échéances", Icon: WalletCards },
       { id: "properties", label: "Recherche", description: "Biens disponibles", Icon: Search },
+      { id: "requests", label: "Mes demandes", description: "Décisions des bailleurs", Icon: ClipboardList },
       { id: "contracts", label: "Mes contrats", description: "Baux et accords", Icon: FileSignature },
       { id: "messages", label: "Messagerie", description: "Conversations", Icon: MessageSquare },
       { id: "map", label: "Carte", description: "Biens autour de moi", Icon: Map }
@@ -131,25 +136,72 @@ function SummaryCards({ role, houses, contracts, payments }: { role: Exclude<Rol
         { label: "Occupés", value: occupied, Icon: Building2 },
         { label: "Encaisse", value: money(collected), Icon: WalletCards }
       ];
+  const palette = [
+    { card: "from-cyan-50 to-white border-cyan-100", icon: "bg-cyan-100 text-cyan-700" },
+    { card: "from-violet-50 to-white border-violet-100", icon: "bg-violet-100 text-violet-700" },
+    { card: "from-emerald-50 to-white border-emerald-100", icon: "bg-emerald-100 text-emerald-700" },
+    { card: "from-amber-50 to-white border-amber-100", icon: "bg-amber-100 text-amber-700" }
+  ];
+  const occupancyPercentage = houses.length ? Math.round(((houses.length - available) / houses.length) * 100) : 0;
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {cards.map(({ label, value, Icon }) => (
-        <div key={label} className="rounded-2xl bg-white p-3 shadow-card">
-          <Icon className="text-brand-600" size={20} />
-          <p className="mt-2 text-xl font-black">{value}</p>
+      {cards.map(({ label, value, Icon }, index) => (
+        <div key={label} className={`rounded-2xl border bg-gradient-to-br p-4 shadow-card ${palette[index].card}`}>
+          <span className={`icon-chip ${palette[index].icon}`}><Icon size={19} /></span>
+          <p className="mt-3 text-2xl font-black tracking-tight">{value}</p>
           <p className="text-sm font-semibold text-muted">{label}</p>
         </div>
       ))}
       {role !== "locataire" && (
-        <div className="rounded-2xl bg-white p-3 shadow-card md:col-span-2 xl:col-span-4">
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Badge tone="success">{available} disponibles</Badge>
-            <Badge>{Math.max(houses.length - available, 0)} occupés/réservés</Badge>
-            <Badge tone="success">{paidThisMonth} paiement(s) ce mois</Badge>
+        <div className="rounded-2xl border border-cyan-100 bg-white p-4 shadow-card md:col-span-2 xl:col-span-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2 text-sm">
+              <Badge tone="success">{available} disponibles</Badge>
+              <Badge>{Math.max(houses.length - available, 0)} occupés/réservés</Badge>
+              <Badge tone="success">{paidThisMonth} paiement(s) ce mois</Badge>
+            </div>
+            <p className="text-xs font-black text-cyan-800">Occupation {occupancyPercentage}%</p>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500" style={{ width: `${occupancyPercentage}%` }} />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DashboardWelcome({
+  role,
+  fullName,
+  houses,
+  contracts
+}: {
+  role: Exclude<Role, "admin">;
+  fullName: string;
+  houses: House[];
+  contracts: Contract[];
+}) {
+  const roleLabel = role === "locataire" ? "Espace locataire" : role === "agence" ? "Pilotage agence" : "Pilotage bailleur";
+  const description = role === "locataire"
+    ? "Retrouve tes demandes, contrats, paiements et conversations dans un espace unique."
+    : "Suis ton portefeuille, les demandes locatives et les contrats depuis une vue opérationnelle.";
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-cyan-950 to-brand-900 p-5 text-white shadow-soft">
+      <div className="absolute -right-8 -top-16 h-44 w-44 rounded-full bg-cyan-300/15 blur-2xl" />
+      <div className="relative flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">{roleLabel}</p>
+          <h1 className="mt-2 text-2xl font-black">Bonjour, {fullName}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/65">{description}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs font-black">
+          <span className="rounded-full bg-white/10 px-3 py-2">{houses.length} bien(s)</span>
+          <span className="rounded-full bg-cyan-300/15 px-3 py-2 text-cyan-100">{contracts.length} contrat(s)</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -273,7 +325,7 @@ function PropertiesView({ role, houses, user }: { role: Exclude<Role, "admin">; 
   );
 }
 
-function ContractsView({ role, contracts, houses, user }: { role: Exclude<Role, "admin">; contracts: Contract[]; houses: House[]; user: { id: string; role: Role } }) {
+function ContractsView({ role, contracts, houses }: { role: Exclude<Role, "admin">; contracts: Contract[]; houses: House[] }) {
   const houseById = new globalThis.Map(houses.map(house => [house.id, house]));
 
   return (
@@ -288,12 +340,14 @@ function ContractsView({ role, contracts, houses, user }: { role: Exclude<Role, 
               <p className="mt-1 text-xs text-muted">Début {contract.startDate} - {contract.duration}</p>
             </div>
             <div className="flex flex-wrap gap-2 md:justify-end">
-              <Badge>{contract.status}</Badge>
+              <Badge>{CONTRACT_STATUS_LABELS[contract.status]}</Badge>
               <Link
-                href={houseById.has(contract.houseId) ? houseContractHref(houseById.get(contract.houseId)!, user) : role === "locataire" ? houseContractsHref(contract.houseId) : houseManagerHref(contract.houseId, "contract")}
+                href={houseById.has(contract.houseId)
+                  ? houseContractHref(houseById.get(contract.houseId)!)
+                  : houseContractsHref(contract.houseId)}
                 className="inline-flex rounded-full bg-brand-50 px-3 py-1 text-xs font-black text-brand-700"
               >
-                {role === "locataire" ? "Ouvrir contrat" : "Modifier contrat"}
+                Ouvrir le contrat
               </Link>
               <Badge tone={contract.agreedByOwnerAt && contract.agreedByTenantAt ? "success" : "warn"}>{contract.agreedByOwnerAt && contract.agreedByTenantAt ? "Accord validé" : "Accord en attente"}</Badge>
             </div>
@@ -401,35 +455,37 @@ export function UserDashboard({ data }: { data: AppData }) {
     return () => window.removeEventListener("popstate", syncSectionFromUrl);
   }, []);
 
-  useEffect(() => {
-    async function refreshDashboard() {
-      if (!user || user.role === "admin") return;
-      const token = await getSupabaseAccessToken();
-      if (!token) return;
+  const refreshDashboard = useCallback(async () => {
+    if (!user || user.role === "admin") return;
+    const token = await getSupabaseAccessToken();
+    if (!token) return;
 
-      const res = await fetch("/api/dashboard", {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store"
-      });
-      if (!res.ok) return;
-      const body = (await res.json()) as AppData;
-      setDashboardData(body);
-    }
-
-    refreshDashboard();
+    const res = await fetch("/api/dashboard", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store"
+    });
+    if (!res.ok) return;
+    const body = (await res.json()) as AppData;
+    setDashboardData(body);
   }, [user]);
+
+  useEffect(() => {
+    refreshDashboard();
+  }, [refreshDashboard]);
 
   const scoped = useMemo(() => role ? filterData(dashboardData, role, user?.id) : { houses: [], contracts: [], payments: [] }, [dashboardData, role, user?.id]);
   const quickActions: Array<{ label: string; section: UserSection }> = role === "locataire"
     ? [
         { label: "Voir mes paiements", section: "payments" },
         { label: "Chercher un bien", section: "properties" },
+        { label: "Suivre mes demandes", section: "requests" },
         { label: "Ouvrir mes contrats", section: "contracts" },
         { label: "Lire mes messages", section: "messages" }
       ]
     : [
         { label: "Suivre les paiements", section: "payments" },
         { label: "Voir mes possessions", section: "properties" },
+        { label: "Traiter les demandes", section: "requests" },
         { label: "Verifier les contrats", section: "contracts" },
         { label: "Repondre aux messages", section: "messages" }
       ];
@@ -448,17 +504,17 @@ export function UserDashboard({ data }: { data: AppData }) {
   if (!user || !role || !meta) return null;
 
   return (
-    <section className="rounded-2xl bg-slate-100 p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
+    <section className="rounded-2xl bg-gradient-to-br from-slate-100 via-cyan-50/60 to-white p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
       <div className="grid gap-3 lg:h-full lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-2xl bg-ink p-4 text-white lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
+        <aside className="rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900 to-cyan-950 p-4 text-white shadow-soft lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           <div>
             <p className="text-xs font-bold uppercase text-white/50">{meta.label}</p>
             <h2 className="mt-1 text-xl font-black">{meta.title}</h2>
             <p className="mt-2 text-xs leading-5 text-white/50">{user.fullName}</p>
           </div>
-          <nav className="mt-6 grid gap-2">
+          <nav className="mt-6 flex gap-2 overflow-x-auto pb-2 scrollbar-soft lg:grid lg:overflow-visible lg:pb-0">
             {meta.nav.map(({ id, label, description, Icon }) => (
-              <button key={id} onClick={() => selectSection(id)} className={`flex items-center gap-3 rounded-2xl p-3 text-left transition ${section === id ? "bg-white text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
+              <button key={id} type="button" aria-pressed={section === id} onClick={() => selectSection(id)} className={`flex min-w-[190px] items-center gap-3 rounded-2xl p-3 text-left transition lg:min-w-0 ${section === id ? "bg-white text-ink shadow-card" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${section === id ? "bg-brand-50 text-brand-700" : "bg-white/10"}`}><Icon size={18} /></span>
                 <span className="min-w-0">
                   <span className="block text-sm font-black">{label}</span>
@@ -469,9 +525,10 @@ export function UserDashboard({ data }: { data: AppData }) {
           </nav>
         </aside>
 
-        <div className="min-w-0 rounded-2xl bg-slate-50 p-2 md:p-3 lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
+        <div className="min-w-0 rounded-2xl bg-white/70 p-2 shadow-inner backdrop-blur-sm md:p-3 lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           {section === "overview" && (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-[fadeIn_.2s_ease-out]">
+              <DashboardWelcome role={role} fullName={user.fullName} houses={scoped.houses} contracts={scoped.contracts} />
               <SummaryCards role={role} houses={scoped.houses} contracts={scoped.contracts} payments={scoped.payments} />
               <div className="grid gap-3 xl:grid-cols-2">
                 <PaymentsView role={role} contracts={scoped.contracts.slice(0, 5)} payments={scoped.payments.slice(0, 5)} houses={scoped.houses} user={user} />
@@ -491,11 +548,16 @@ export function UserDashboard({ data }: { data: AppData }) {
               </div>
             </div>
           )}
-          {section === "payments" && <PaymentsView role={role} contracts={scoped.contracts} payments={scoped.payments} houses={scoped.houses} user={user} />}
-          {section === "properties" && <PropertiesView role={role} houses={scoped.houses} user={user} />}
-          {section === "contracts" && <ContractsView role={role} contracts={scoped.contracts} houses={scoped.houses} user={user} />}
-          {section === "messages" && <MessagesView role={role} contracts={scoped.contracts} />}
-          {section === "map" && <DashboardMap houses={scoped.houses} title="Vue map" subtitle={role === "locataire" ? "Biens disponibles à proximité de tes recherches." : "Répartition géographique de ton portefeuille."} />}
+          {section !== "overview" && (
+            <div key={section} className="animate-[fadeIn_.2s_ease-out]">
+              {section === "payments" && <PaymentsView role={role} contracts={scoped.contracts} payments={scoped.payments} houses={scoped.houses} user={user} />}
+              {section === "properties" && <PropertiesView role={role} houses={scoped.houses} user={user} />}
+              {section === "requests" && <RentalRequestsPanel role={role} requests={dashboardData.rentalRequests} onChanged={refreshDashboard} />}
+              {section === "contracts" && <ContractsView role={role} contracts={scoped.contracts} houses={scoped.houses} />}
+              {section === "messages" && <MessagesView role={role} contracts={scoped.contracts} />}
+              {section === "map" && <DashboardMap houses={scoped.houses} title="Vue map" subtitle={role === "locataire" ? "Biens disponibles à proximité de tes recherches." : "Répartition géographique de ton portefeuille."} />}
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -13,6 +13,7 @@ import { useCurrentUser } from "@/lib/auth-client";
 import { houseContractHref, housePublicHref } from "@/lib/house-links";
 import { getSupabaseAccessToken } from "@/lib/supabase";
 import type { AppData, Contract, House, Payment } from "@/types";
+import { isContractActive, isPubliclyVisibleHouse } from "@/lib/statuses";
 
 type OwnerHouseWorkspaceProps = {
   houseId: string;
@@ -33,18 +34,19 @@ export function OwnerHouseWorkspace({ houseId, house, contracts, payments }: Own
   const [activeAction, setActiveAction] = useState<DetailAction>(null);
 
   const activeContract = useMemo(
-    () => managedContracts.find(contract => contract.status !== "annule") || managedContracts[0] || null,
+    () => managedContracts.find(contract => isContractActive(contract.status)) || null,
     [managedContracts]
   );
   const tenantId = activeContract?.tenantId || managedHouse?.currentTenantId || null;
   const activeOccupantName = activeContract?.tenant || managedHouse?.currentTenant || null;
-  const canManage = Boolean(managedHouse && (user?.role === "admin" || user?.id === managedHouse.ownerId));
+  const canView = Boolean(managedHouse && (user?.role === "admin" || user?.id === managedHouse.ownerId));
+  const canManage = Boolean(managedHouse && user?.id === managedHouse.ownerId);
 
   useEffect(() => {
-    if (!loading && !detailsLoading && managedHouse && !canManage) {
+    if (!loading && !detailsLoading && managedHouse && !canView) {
       router.replace(housePublicHref(managedHouse.id));
     }
-  }, [canManage, detailsLoading, loading, managedHouse, router]);
+  }, [canView, detailsLoading, loading, managedHouse, router]);
 
   useEffect(() => {
     setManagedHouse(house);
@@ -145,7 +147,7 @@ export function OwnerHouseWorkspace({ houseId, house, contracts, payments }: Own
     );
   }
 
-  if (!user || !canManage) {
+  if (!user || !canView) {
     return (
       <div className="surface-card">
         <h1 className="text-2xl font-black">Redirection vers l’annonce</h1>
@@ -163,7 +165,7 @@ export function OwnerHouseWorkspace({ houseId, house, contracts, payments }: Own
 
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <section className="space-y-5">
-          <OwnerHouseSummary house={managedHouse} contracts={managedContracts} />
+          <OwnerHouseSummary house={managedHouse} contracts={managedContracts} canEdit={canManage} />
 
           <div className="surface-card">
             <div className="flex items-center gap-2">
@@ -191,16 +193,18 @@ export function OwnerHouseWorkspace({ houseId, house, contracts, payments }: Own
           </div>
 
           <div id="actions-rapides" className="scroll-mt-24">
-            {!activeAction && (
+            {(!activeAction || !canManage) && (
               <div className="surface-card border-dashed border-slate-200">
-                <h2 className="text-xl font-black">Actions rapides</h2>
+                <h2 className="text-xl font-black">{canManage ? "Actions rapides" : "Consultation administrateur"}</h2>
                 <p className="mt-2 text-sm text-muted">
-                  Choisis une action dans le panneau de droite pour afficher le formulaire correspondant.
+                  {canManage
+                    ? "Choisis une action dans le panneau de droite pour afficher le formulaire correspondant."
+                    : "Les informations du bien et du contrat sont accessibles en lecture seule. Seul le bailleur ou l'agence propriétaire peut les modifier."}
                 </p>
               </div>
             )}
 
-            {activeAction === "payment" && (
+            {canManage && activeAction === "payment" && (
               <OwnerPaymentPanel
                 activeContract={activeContract}
                 house={managedHouse}
@@ -209,11 +213,11 @@ export function OwnerHouseWorkspace({ houseId, house, contracts, payments }: Own
               />
             )}
 
-            {activeAction === "contract" && (
+            {canManage && activeAction === "contract" && (
               <OwnerContractEditor house={managedHouse} onHouseUpdated={setManagedHouse} />
             )}
 
-            {activeAction === "message" && (
+            {canManage && activeAction === "message" && (
               <div id="contacter-locataire" className="scroll-mt-24">
                 <InternalMessageThread
                   houseId={managedHouse.id}
@@ -232,30 +236,44 @@ export function OwnerHouseWorkspace({ houseId, house, contracts, payments }: Own
             <Home size={22} />
             <h2 className="mt-4 text-xl font-black">Operations rapides</h2>
             <div className="mt-4 grid gap-2 text-sm">
-              <Link href={housePublicHref(managedHouse.id)} className="rounded-xl bg-white/10 p-3 font-bold hover:bg-white/15">Voir l'annonce publique</Link>
-              <Link href={houseContractHref(managedHouse, user)} className="rounded-xl bg-white/10 p-3 font-bold hover:bg-white/15">Ouvrir le contrat</Link>
-              <button
-                type="button"
-                onClick={() => selectAction("payment")}
-                className={`flex items-center gap-2 rounded-xl p-3 text-left font-bold hover:bg-white/15 ${activeAction === "payment" ? "bg-white text-ink" : "bg-white/10"}`}
-              >
-                <WalletCards size={16} /> Enregistrer un paiement
-              </button>
-              <button
-                type="button"
-                onClick={() => selectAction("contract")}
-                className={`flex items-center gap-2 rounded-xl p-3 text-left font-bold hover:bg-white/15 ${activeAction === "contract" ? "bg-white text-ink" : "bg-white/10"}`}
-              >
-                <FileSignature size={16} /> Modifier le contrat
-              </button>
-              <button
-                type="button"
-                onClick={() => selectAction("message")}
-                className={`flex items-center gap-2 rounded-xl p-3 text-left font-bold hover:bg-white/15 ${activeAction === "message" ? "bg-white text-ink" : "bg-white/10"}`}
-              >
-                <MessageSquare size={16} /> Contacter le locataire
-              </button>
-              <Link href="/add-house" className="rounded-xl bg-white/10 p-3 font-bold hover:bg-white/15">Publier un autre bien</Link>
+              {isPubliclyVisibleHouse(managedHouse) ? (
+                <Link href={housePublicHref(managedHouse.id)} className="rounded-xl bg-white/10 p-3 font-bold hover:bg-white/15">
+                  Voir l'annonce publique
+                </Link>
+              ) : (
+                <p className="rounded-xl bg-white/10 p-3 font-bold text-white/60">
+                  Annonce non visible publiquement
+                </p>
+              )}
+              <Link href={houseContractHref(managedHouse)} className="rounded-xl bg-white/10 p-3 font-bold hover:bg-white/15">
+                {managedContracts.length ? "Ouvrir le contrat" : "Prévisualiser le modèle"}
+              </Link>
+              {canManage && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => selectAction("payment")}
+                    className={`flex items-center gap-2 rounded-xl p-3 text-left font-bold hover:bg-white/15 ${activeAction === "payment" ? "bg-white text-ink" : "bg-white/10"}`}
+                  >
+                    <WalletCards size={16} /> Enregistrer un paiement
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectAction("contract")}
+                    className={`flex items-center gap-2 rounded-xl p-3 text-left font-bold hover:bg-white/15 ${activeAction === "contract" ? "bg-white text-ink" : "bg-white/10"}`}
+                  >
+                    <FileSignature size={16} /> Modifier le modèle de contrat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectAction("message")}
+                    className={`flex items-center gap-2 rounded-xl p-3 text-left font-bold hover:bg-white/15 ${activeAction === "message" ? "bg-white text-ink" : "bg-white/10"}`}
+                  >
+                    <MessageSquare size={16} /> Contacter le locataire
+                  </button>
+                  <Link href="/add-house" className="rounded-xl bg-white/10 p-3 font-bold hover:bg-white/15">Publier un autre bien</Link>
+                </>
+              )}
             </div>
           </div>
         </aside>

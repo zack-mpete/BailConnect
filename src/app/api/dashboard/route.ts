@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError, getApiClient, getAuthenticatedUser } from "@/app/api/_supabase";
-import type { AppRole, AppUser, Contract, House, Payment } from "@/types";
+import type {
+  AppRole,
+  AppUser,
+  Contract,
+  ContractStatus,
+  House,
+  Payment,
+  RentalRequest,
+  RentalRequestStatus
+} from "@/types";
 
 type UserRow = {
   id: string;
@@ -26,6 +35,13 @@ type HouseRow = {
   rooms: number;
   type: string;
   status: House["status"];
+  publication_status: House["publicationStatus"];
+  publication_reviewed_at?: string | null;
+  publication_reviewed_by?: string | null;
+  publication_rejection_reason?: string | null;
+  is_archived: boolean;
+  archived_at?: string | null;
+  archived_by?: string | null;
   current_tenant_id?: string | null;
   current_contract_id?: string | null;
   image_url: string | null;
@@ -47,10 +63,36 @@ type ContractRow = {
   start_date: string;
   duration_months: number;
   rent: number | string;
-  status: string;
+  status: ContractStatus;
   seal_code: string;
   agreed_by_owner_at?: string | null;
   agreed_by_tenant_at?: string | null;
+  contract_title?: string | null;
+  contract_body?: string | null;
+  contract_deposit?: number | string | null;
+  contract_payment_terms?: string | null;
+  contract_special_terms?: string | null;
+  termination_effective_date?: string | null;
+  termination_reason?: string | null;
+  termination_note?: string | null;
+  termination_requested_at?: string | null;
+  termination_requested_by?: string | null;
+  terminated_at?: string | null;
+  terminated_by?: string | null;
+};
+
+type RentalRequestRow = {
+  id: string;
+  house_id: string;
+  tenant_id: string;
+  message?: string | null;
+  status: RentalRequestStatus;
+  decision_reason?: string | null;
+  decided_at?: string | null;
+  decided_by?: string | null;
+  cancelled_at?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type PaymentRow = {
@@ -99,6 +141,13 @@ function toHouse(row: HouseRow, usersById: Map<string, AppUser>): House {
     rooms: row.rooms,
     type: row.type,
     status: row.status,
+    publicationStatus: row.publication_status,
+    publicationReviewedAt: row.publication_reviewed_at || null,
+    publicationReviewedBy: row.publication_reviewed_by || null,
+    publicationRejectionReason: row.publication_rejection_reason || null,
+    isArchived: row.is_archived,
+    archivedAt: row.archived_at || null,
+    archivedBy: row.archived_by || null,
     currentTenantId: row.current_tenant_id || null,
     currentTenant: row.current_tenant_id ? userName(row.current_tenant_id, usersById) : null,
     currentContractId: row.current_contract_id || null,
@@ -130,7 +179,19 @@ function toContract(row: ContractRow, usersById: Map<string, AppUser>): Contract
     status: row.status,
     seal: row.seal_code,
     agreedByOwnerAt: row.agreed_by_owner_at || null,
-    agreedByTenantAt: row.agreed_by_tenant_at || null
+    agreedByTenantAt: row.agreed_by_tenant_at || null,
+    contractTitle: row.contract_title || null,
+    contractBody: row.contract_body || null,
+    contractDeposit: row.contract_deposit === null || row.contract_deposit === undefined ? null : Number(row.contract_deposit),
+    contractPaymentTerms: row.contract_payment_terms || null,
+    contractSpecialTerms: row.contract_special_terms || null,
+    terminationEffectiveDate: row.termination_effective_date || null,
+    terminationReason: row.termination_reason || null,
+    terminationNote: row.termination_note || null,
+    terminationRequestedAt: row.termination_requested_at || null,
+    terminationRequestedBy: row.termination_requested_by || null,
+    terminatedAt: row.terminated_at || null,
+    terminatedBy: row.terminated_by || null
   };
 }
 
@@ -192,7 +253,11 @@ export async function GET(req: NextRequest) {
       : paymentsQuery.eq("owner_id", currentUser.id);
   }
 
-  const [contractsResult, paymentsResult] = await Promise.all([contractsQuery, paymentsQuery]);
+  const [contractsResult, paymentsResult, requestsResult] = await Promise.all([
+    contractsQuery,
+    paymentsQuery,
+    client.from("rental_requests").select("*").order("created_at", { ascending: false })
+  ]);
   if (contractsResult.error) {
     console.error("[api/dashboard] Chargement des contrats impossible.", {
       userId: currentUser.id,
@@ -208,6 +273,14 @@ export async function GET(req: NextRequest) {
       error: paymentsResult.error.message
     });
   }
+  if (requestsResult.error) {
+    console.error("[api/dashboard] Chargement des demandes impossible.", {
+      userId: currentUser.id,
+      code: requestsResult.error.code,
+      error: requestsResult.error.message
+    });
+    return apiError(requestsResult.error.message, 400);
+  }
 
   const contractRowsTyped = (contractsResult.data || []) as ContractRow[];
   const contractHouseIds = Array.from(new Set(contractRowsTyped.map(contract => contract.house_id)));
@@ -216,8 +289,9 @@ export async function GET(req: NextRequest) {
   if (!isAdmin) {
     if (currentUser.role === "locataire") {
       housesQuery = contractHouseIds.length
-        ? housesQuery.or(`status.eq.Disponible,id.in.(${contractHouseIds.join(",")})`)
-        : housesQuery.eq("status", "Disponible");
+        ? housesQuery
+            .or(`and(status.eq.Disponible,publication_status.eq.validee),id.in.(${contractHouseIds.join(",")})`)
+        : housesQuery.eq("status", "Disponible").eq("publication_status", "validee");
     } else {
       housesQuery = housesQuery.eq("owner_id", currentUser.id);
     }
@@ -236,6 +310,27 @@ export async function GET(req: NextRequest) {
   const houses = ((housesResult.data || []) as HouseRow[]).map(row => toHouse(row, usersById));
   const housesById = new Map(houses.map(house => [house.id, house]));
   const contracts = contractRowsTyped.map(row => toContract(row, usersById));
+  const rentalRequests: RentalRequest[] = ((requestsResult.data || []) as RentalRequestRow[]).map(row => {
+    const house = housesById.get(row.house_id);
+    const ownerId = house?.ownerId || "";
+    return {
+      id: row.id,
+      houseId: row.house_id,
+      houseTitle: house?.title || "Bien immobilier",
+      ownerId,
+      ownerName: ownerId ? userName(ownerId, usersById) : "Bailleur",
+      tenantId: row.tenant_id,
+      tenantName: userName(row.tenant_id, usersById),
+      message: row.message || null,
+      status: row.status,
+      decisionReason: row.decision_reason || null,
+      decidedAt: row.decided_at || null,
+      decidedBy: row.decided_by || null,
+      cancelledAt: row.cancelled_at || null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  });
   const payments = paymentsResult.error
     ? []
     : ((paymentsResult.data || []) as PaymentRow[]).map(row => toPayment(row, housesById));
@@ -244,6 +339,7 @@ export async function GET(req: NextRequest) {
     users: isAdmin ? users : [currentUser],
     roles,
     houses,
+    rentalRequests,
     contracts,
     payments,
     stats: {
