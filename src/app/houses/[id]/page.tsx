@@ -8,7 +8,7 @@ export default async function HouseDetail({ params }: { params: Promise<{ id: st
 
   return (
     <main className="pb-24 md:pb-0"><Navbar />
-      <section className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+      <section className="mx-auto max-w-6xl px-3 py-6 min-[360px]:px-4 md:px-6 md:py-8">
         <PublicHouseDetail houseId={id} initialHouse={house} />
       </section>
     </main>

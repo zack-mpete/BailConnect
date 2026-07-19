@@ -61,7 +61,22 @@ test("publication, demande, contrat et résiliation immédiate", async ({ reques
     expect(createResponse.status()).toBe(201);
     const created = await createResponse.json();
     houseId = created.house.id;
-    expect(created.house.publication_status).toBe("en_attente");
+    expect(created.house.is_valid).toBe(false);
+
+    const publicPendingDetail = await request.get(`/api/houses/${houseId}`);
+    expect(publicPendingDetail.status()).toBe(404);
+
+    const ownerPendingDetail = await request.get(`/api/houses/${houseId}`, {
+      headers: headers(landlordToken)
+    });
+    expect(ownerPendingDetail.status()).toBe(200);
+    expect((await ownerPendingDetail.json()).house.id).toBe(houseId);
+
+    const ownerDashboard = await request.get("/api/dashboard", {
+      headers: headers(landlordToken)
+    });
+    expect(ownerDashboard.status()).toBe(200);
+    expect((await ownerDashboard.json()).houses.some(house => house.id === houseId)).toBe(true);
 
     let catalog = await (await request.get("/api/houses")).json();
     expect(catalog.houses.some(house => house.id === houseId)).toBe(false);
@@ -71,6 +86,7 @@ test("publication, demande, contrat et résiliation immédiate", async ({ reques
       data: { action: "approve" }
     });
     expect(approveResponse.status()).toBe(200);
+    expect((await approveResponse.json()).house.is_valid).toBe(true);
 
     catalog = await (await request.get("/api/houses")).json();
     expect(catalog.houses.some(house => house.id === houseId)).toBe(true);

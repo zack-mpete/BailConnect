@@ -35,7 +35,7 @@ type HouseRow = {
   rooms: number;
   type: string;
   status: House["status"];
-  publication_status: House["publicationStatus"];
+  is_valid: boolean;
   publication_reviewed_at?: string | null;
   publication_reviewed_by?: string | null;
   publication_rejection_reason?: string | null;
@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
     rooms: row.rooms,
     type: row.type,
     status: row.status,
-    publicationStatus: row.publication_status,
+    isValid: row.is_valid,
     publicationReviewedAt: row.publication_reviewed_at || null,
     publicationReviewedBy: row.publication_reviewed_by || null,
     publicationRejectionReason: row.publication_rejection_reason || null,

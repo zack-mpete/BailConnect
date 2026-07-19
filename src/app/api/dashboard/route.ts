@@ -35,7 +35,7 @@ type HouseRow = {
   rooms: number;
   type: string;
   status: House["status"];
-  publication_status: House["publicationStatus"];
+  is_valid: boolean;
   publication_reviewed_at?: string | null;
   publication_reviewed_by?: string | null;
   publication_rejection_reason?: string | null;
@@ -141,7 +141,7 @@ function toHouse(row: HouseRow, usersById: Map<string, AppUser>): House {
     rooms: row.rooms,
     type: row.type,
     status: row.status,
-    publicationStatus: row.publication_status,
+    isValid: row.is_valid,
     publicationReviewedAt: row.publication_reviewed_at || null,
     publicationReviewedBy: row.publication_reviewed_by || null,
     publicationRejectionReason: row.publication_rejection_reason || null,
@@ -290,8 +290,8 @@ export async function GET(req: NextRequest) {
     if (currentUser.role === "locataire") {
       housesQuery = contractHouseIds.length
         ? housesQuery
-            .or(`and(status.eq.Disponible,publication_status.eq.validee),id.in.(${contractHouseIds.join(",")})`)
-        : housesQuery.eq("status", "Disponible").eq("publication_status", "validee");
+            .or(`and(status.eq.Disponible,is_valid.eq.true,is_archived.eq.false),id.in.(${contractHouseIds.join(",")})`)
+        : housesQuery.eq("status", "Disponible").eq("is_valid", true).eq("is_archived", false);
     } else {
       housesQuery = housesQuery.eq("owner_id", currentUser.id);
     }

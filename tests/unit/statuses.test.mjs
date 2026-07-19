@@ -8,12 +8,11 @@ import {
 
 describe("règles de visibilité des annonces", () => {
   it("affiche uniquement une annonce validée et disponible", () => {
-    expect(isPubliclyVisibleHouse({ publicationStatus: "validee", status: "Disponible", isArchived: false })).toBe(true);
-    expect(isPubliclyVisibleHouse({ publicationStatus: "en_attente", status: "Disponible", isArchived: false })).toBe(false);
-    expect(isPubliclyVisibleHouse({ publicationStatus: "rejetee", status: "Disponible", isArchived: false })).toBe(false);
-    expect(isPubliclyVisibleHouse({ publicationStatus: "validee", status: "Réservé", isArchived: false })).toBe(false);
-    expect(isPubliclyVisibleHouse({ publicationStatus: "validee", status: "Loué", isArchived: false })).toBe(false);
-    expect(isPubliclyVisibleHouse({ publicationStatus: "validee", status: "Disponible", isArchived: true })).toBe(false);
+    expect(isPubliclyVisibleHouse({ isValid: true, status: "Disponible", isArchived: false })).toBe(true);
+    expect(isPubliclyVisibleHouse({ isValid: false, status: "Disponible", isArchived: false })).toBe(false);
+    expect(isPubliclyVisibleHouse({ isValid: true, status: "Réservé", isArchived: false })).toBe(false);
+    expect(isPubliclyVisibleHouse({ isValid: true, status: "Loué", isArchived: false })).toBe(false);
+    expect(isPubliclyVisibleHouse({ isValid: true, status: "Disponible", isArchived: true })).toBe(false);
   });
 });
 

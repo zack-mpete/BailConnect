@@ -203,7 +203,7 @@ export function AdminContracts({
         variants={listVariants}
         initial="hidden"
         animate="visible"
-        className="grid max-h-[calc(100vh-320px)] gap-3 overflow-y-auto p-4 scrollbar-soft md:hidden"
+        className="grid gap-3 p-3 min-[360px]:p-4 md:hidden"
       >
         {visibleContracts.map(contract => (
           <motion.article
@@ -222,7 +222,7 @@ export function AdminContracts({
               <p className="truncate text-sm font-bold">{contract.owner}</p>
               <p className="mt-1 truncate text-sm text-muted">{contract.tenant}</p>
             </div>
-            <div className="mt-4 grid grid-cols-[1fr_auto] items-end gap-3">
+            <div className="mt-4 grid items-end gap-3 min-[360px]:grid-cols-[1fr_auto]">
               <AgreementState contract={contract} />
               <p className="text-right text-lg font-black text-slate-950">{money(contract.rent)}</p>
             </div>
@@ -236,7 +236,7 @@ export function AdminContracts({
         ))}
       </motion.div>
 
-      <div className="hidden max-h-[calc(100vh-320px)] overflow-auto scrollbar-soft md:block">
+      <div className="hidden max-h-[calc(100dvh-320px)] overflow-auto scrollbar-soft md:block">
         <table className="w-full min-w-[1040px] text-left text-sm">
           <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] uppercase tracking-wider text-muted backdrop-blur">
             <tr>

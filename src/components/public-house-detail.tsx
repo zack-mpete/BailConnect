@@ -108,7 +108,7 @@ export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; 
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
+    <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[1.2fr_.8fr]">
       <Image
         src={house.image}
         alt={house.title}
@@ -116,14 +116,14 @@ export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; 
         height={940}
         priority
         sizes="(min-width: 1024px) 60vw, 100vw"
-        className="h-[470px] w-full rounded-2xl object-cover shadow-soft"
+        className="h-[260px] w-full rounded-2xl object-cover shadow-soft min-[390px]:h-[340px] sm:h-[420px] lg:h-[470px]"
       />
       <Card className="space-y-5">
         <Badge tone={house.status === "Disponible" ? "success" : "warn"}>{house.status}</Badge>
-        <h1 className="text-3xl font-black">{house.title}</h1>
-        <p className="flex items-center gap-2 text-muted"><MapPin size={18}/>{house.commune}, {house.city}</p>
-        <p className="text-3xl font-black text-brand-700">{money(house.price)} <span className="text-sm text-muted">/ mois</span></p>
-        <p className="leading-7 text-slate-600">{house.description}</p>
+        <h1 className="break-words text-2xl font-black sm:text-3xl">{house.title}</h1>
+        <p className="flex min-w-0 items-start gap-2 text-muted"><MapPin className="mt-0.5 shrink-0" size={18}/><span className="break-words">{house.commune}, {house.city}</span></p>
+        <p className="break-words text-2xl font-black text-brand-700 sm:text-3xl">{money(house.price)} <span className="text-sm text-muted">/ mois</span></p>
+        <p className="break-words leading-7 text-slate-600">{house.description}</p>
         <div className="flex flex-wrap gap-2">{house.features.map(feature => <span key={feature} className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold">{feature}</span>)}</div>
         <div className="rounded-2xl bg-brand-50 p-4 text-sm text-brand-900"><b>Vision future :</b> une visite 3D sera ajoutée plus tard à partir de modèles .glb ou scans optimisés.</div>
         {user?.role === "locataire" && hasContract ? (
@@ -158,7 +158,7 @@ export function PublicHouseDetail({ houseId, initialHouse }: { houseId: string; 
       </Card>
       {requestOpen && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="rental-request-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-soft">
+          <div className="safe-modal-panel w-full max-w-lg rounded-2xl bg-white p-4 shadow-soft sm:p-5">
             <h2 id="rental-request-title" className="text-xl font-black">Demande d’occupation</h2>
             <p className="mt-2 text-sm text-muted">{house.title}</p>
             <label className="mt-4 block text-sm font-bold">

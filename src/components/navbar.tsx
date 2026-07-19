@@ -65,24 +65,24 @@ export function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
-          <Link href="/" className="min-w-0 text-lg font-black tracking-tight md:text-xl">Bail<span className="text-brand-600">Connect</span></Link>
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 min-[360px]:px-4 md:gap-3 md:px-6 md:py-4">
+          <Link href="/" className="min-w-0 truncate text-base font-black tracking-tight min-[360px]:text-lg md:text-xl">Bail<span className="text-brand-600">Connect</span></Link>
           <div className="hidden items-center gap-2 md:flex">
             {items.map(({ label, href }) => <Link key={href} href={href} onClick={() => markSearch(href)} className={linkClass(href)}>{label}</Link>)}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <NotificationCenter />
             <AuthStatus compact />
           </div>
         </div>
       </header>
 
-      <nav className="fixed bottom-3 left-3 right-3 z-50 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-soft backdrop-blur-xl md:hidden">
+      <nav className="fixed bottom-[max(.5rem,env(safe-area-inset-bottom))] left-2 right-2 z-50 rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-soft backdrop-blur-xl min-[360px]:left-3 min-[360px]:right-3 min-[360px]:p-2 md:hidden">
         <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(mobileItems.length, 2)}, minmax(0, 1fr))` }}>
           {mobileItems.map(({ label, href, Icon }) => (
-            <Link key={href} href={href} onClick={() => markSearch(href)} className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700", isActive(href) && "bg-brand-50 text-brand-700")}>
+            <Link key={href} href={href} onClick={() => markSearch(href)} className={cn("flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-semibold text-slate-600 hover:bg-brand-50 hover:text-brand-700 min-[360px]:min-h-14 min-[360px]:rounded-2xl min-[360px]:py-2 min-[360px]:text-[11px]", isActive(href) && "bg-brand-50 text-brand-700")}>
               <Icon size={18}/>
-              <span className="max-w-full text-center leading-tight">{label}</span>
+              <span className="max-w-full truncate text-center leading-tight">{label}</span>
             </Link>
           ))}
         </div>

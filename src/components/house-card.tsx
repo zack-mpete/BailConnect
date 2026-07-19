@@ -32,13 +32,13 @@ export function HouseCard({ house }: { house: House }) {
         </div>
         <div className="space-y-4 p-4">
           <div>
-            <h3 className="text-lg font-black">{house.title}</h3>
-            <p className="mt-1 flex items-center gap-1 text-sm text-muted"><MapPin size={16} />{house.commune}, {house.city}</p>
+            <h3 className="break-words text-lg font-black">{house.title}</h3>
+            <p className="mt-1 flex min-w-0 items-start gap-1 text-sm text-muted"><MapPin className="mt-0.5 shrink-0" size={16} /><span className="break-words">{house.commune}, {house.city}</span></p>
           </div>
-          <p className="text-sm leading-6 text-slate-600">{house.description}</p>
+          <p className="break-words text-sm leading-6 text-slate-600">{house.description}</p>
           <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
             <span className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-2"><BedDouble size={15} />{house.rooms} pièces</span>
-            <span className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-2"><ShieldCheck size={15} />{house.owner}</span>
+            <span className="flex min-w-0 items-center gap-1 rounded-full bg-slate-100 px-3 py-2"><ShieldCheck className="shrink-0" size={15} /><span className="break-words">{house.owner}</span></span>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button href={detailHref} className="flex-1 bg-ink text-white">

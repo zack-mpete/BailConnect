@@ -173,7 +173,7 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
   if (user?.role !== "admin") return null;
 
   return (
-    <section className="rounded-2xl bg-gradient-to-br from-slate-100 via-cyan-50/60 to-white p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
+    <section className="min-w-0 rounded-2xl bg-gradient-to-br from-slate-100 via-cyan-50/60 to-white p-1.5 min-[360px]:p-2 md:p-3 lg:h-[calc(100dvh-104px)] lg:overflow-hidden">
       <div className="grid gap-3 lg:h-full lg:grid-cols-[280px_1fr]">
         <aside className="rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900 to-cyan-950 p-4 text-white shadow-soft lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           <div className="flex items-start justify-between gap-3">
@@ -185,14 +185,14 @@ export function AdminDashboard({ initialData }: { initialData: AppData }) {
               <RefreshCw size={17} />
             </button>
           </div>
-          <nav className="mt-6 flex gap-2 overflow-x-auto pb-2 scrollbar-soft lg:grid lg:overflow-visible lg:pb-0">
+          <nav className="mt-6 flex snap-x gap-2 overflow-x-auto pb-2 scrollbar-soft lg:grid lg:overflow-visible lg:pb-0">
             {navigation.map(({ id, label, description, Icon }) => (
               <button
                 key={id}
                 type="button"
                 aria-pressed={section === id}
                 onClick={() => selectSection(id)}
-                className={`flex min-w-[190px] items-center gap-3 rounded-2xl p-3 text-left transition lg:min-w-0 ${section === id ? "bg-white text-ink shadow-card" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
+                className={`flex min-w-[172px] snap-start items-center gap-3 rounded-2xl p-3 text-left transition min-[390px]:min-w-[190px] lg:min-w-0 ${section === id ? "bg-white text-ink shadow-card" : "text-white/75 hover:bg-white/10 hover:text-white"}`}
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${section === id ? "bg-brand-50 text-brand-700" : "bg-white/10"}`}><Icon size={18} /></span>
                 <span className="min-w-0">

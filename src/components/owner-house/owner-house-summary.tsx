@@ -5,7 +5,7 @@ import { FileSignature } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { money } from "@/lib/utils";
 import type { Contract, House } from "@/types";
-import { PUBLICATION_STATUS_LABELS } from "@/lib/statuses";
+import { publicationLabel } from "@/lib/statuses";
 
 type OwnerHouseSummaryProps = {
   house: House;
@@ -17,7 +17,7 @@ export function OwnerHouseSummary({ house, contracts, canEdit = false }: OwnerHo
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-card">
       {house.image && (
-        <div className="relative h-72 w-full">
+        <div className="relative h-52 w-full min-[390px]:h-64 sm:h-72">
           <Image
             src={house.image}
             alt={house.title}
@@ -28,10 +28,10 @@ export function OwnerHouseSummary({ house, contracts, canEdit = false }: OwnerHo
         </div>
       )}
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-black">{house.title}</h1>
+          <div className="min-w-0">
+            <h1 className="break-words text-2xl font-black sm:text-3xl">{house.title}</h1>
             <p className="mt-1 text-sm text-muted">
               {house.district ? `${house.district}, ` : ""}
               {house.commune}, {house.city}
@@ -49,16 +49,16 @@ export function OwnerHouseSummary({ house, contracts, canEdit = false }: OwnerHo
             )}
             {house.isArchived && <Badge tone="warn">Archivé</Badge>}
             <Badge tone={house.status === "Disponible" ? "success" : "warn"}>{house.status}</Badge>
-            <Badge tone={house.publicationStatus === "validee" ? "success" : "warn"}>
-              {PUBLICATION_STATUS_LABELS[house.publicationStatus]}
+            <Badge tone={house.isValid ? "success" : "warn"}>
+              {publicationLabel(house)}
             </Badge>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
+        <div className="mt-5 grid gap-3 min-[360px]:grid-cols-2 md:grid-cols-4">
           <div className="soft-tile">
             <p className="text-xs font-bold text-muted">Loyer</p>
-            <p className="font-black">{money(house.price)}</p>
+            <p className="break-words font-black">{money(house.price)}</p>
           </div>
           <div className="soft-tile">
             <p className="text-xs font-bold text-muted">Pieces</p>

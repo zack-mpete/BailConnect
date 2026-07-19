@@ -119,6 +119,9 @@ export async function POST(req: NextRequest) {
     price: parsedPrice,
     rooms: parsedRooms,
     type: parsedType,
+    status: "Disponible",
+    is_valid: false,
+    is_archived: false,
     image_url: optionalText(image_url),
     features: Array.isArray(features)
       ? features.filter((feature): feature is string => typeof feature === "string" && Boolean(feature.trim())).map(feature => feature.trim()).slice(0, 50)

@@ -1,10 +1,4 @@
-import type { ContractStatus, PublicationStatus, RentalRequestStatus } from "@/types";
-
-export const PUBLICATION_STATUS_LABELS: Record<PublicationStatus, string> = {
-  en_attente: "En attente de validation",
-  validee: "Validée",
-  rejetee: "Rejetée"
-};
+import type { ContractStatus, House, RentalRequestStatus } from "@/types";
 
 export const RENTAL_REQUEST_STATUS_LABELS: Record<RentalRequestStatus, string> = {
   en_attente: "En attente",
@@ -34,9 +28,14 @@ export function isContractActive(status: string): status is ContractStatus {
 }
 
 export function isPubliclyVisibleHouse(house: {
-  publicationStatus: PublicationStatus;
+  isValid: boolean;
   status: string;
   isArchived: boolean;
 }) {
-  return !house.isArchived && house.publicationStatus === "validee" && house.status === "Disponible";
+  return house.isValid && !house.isArchived && house.status === "Disponible";
+}
+
+export function publicationLabel(house: Pick<House, "isValid" | "publicationRejectionReason">) {
+  if (house.isValid) return "Validée";
+  return house.publicationRejectionReason ? "Rejetée" : "En attente de validation";
 }

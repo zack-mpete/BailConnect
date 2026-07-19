@@ -10,11 +10,21 @@ const viewports = [
   { width: 1440, height: 900 }
 ];
 
+const mainPaths = [
+  "/",
+  "/search",
+  "/auth",
+  "/houses/h1",
+  "/dashboard",
+  "/contrats",
+  "/add-house"
+];
+
 for (const viewport of viewports) {
   test.describe(`${viewport.width}px`, () => {
     test.use({ viewport });
 
-    for (const path of ["/", "/search", "/auth"]) {
+    for (const path of mainPaths) {
       test(`${path} ne déborde pas horizontalement`, async ({ page }) => {
         await page.route("**/_next/image?*", route => route.abort());
         await page.goto(path, { waitUntil: "domcontentloaded" });
@@ -26,6 +36,14 @@ for (const viewport of viewports) {
         expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport + 1);
         expect(dimensions.root).toBeLessThanOrEqual(dimensions.viewport + 1);
         await expect(page.locator("body")).toBeVisible();
+
+        const mobileNavigation = page.locator("nav.fixed");
+        if (viewport.width < 768 && await mobileNavigation.count()) {
+          const box = await mobileNavigation.boundingBox();
+          expect(box?.x || 0).toBeGreaterThanOrEqual(0);
+          expect((box?.x || 0) + (box?.width || 0)).toBeLessThanOrEqual(viewport.width + 1);
+          expect((box?.y || 0) + (box?.height || 0)).toBeLessThanOrEqual(viewport.height + 1);
+        }
       });
     }
   });

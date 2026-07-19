@@ -146,7 +146,7 @@ export function RentalRequestsPanel({
 
       {rejecting && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="reject-request-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-soft">
+          <div className="safe-modal-panel w-full max-w-lg rounded-2xl bg-white p-4 shadow-soft sm:p-5">
             <h3 id="reject-request-title" className="text-xl font-black">Refuser la demande</h3>
             <p className="mt-2 text-sm text-muted">{rejecting.tenantName} — {rejecting.houseTitle}</p>
             <label className="mt-4 block text-sm font-bold">

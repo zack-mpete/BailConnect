@@ -18,12 +18,6 @@ Canonical schema file: [`../supabase-schema.sql`](../supabase-schema.sql)
 - `Loué`
 - `Archivé` (legacy only; archival now uses `houses.is_archived`)
 
-### `publication_status`
-
-- `en_attente`
-- `validee`
-- `rejetee`
-
 ### `contract_status`
 
 - `brouillon`
@@ -82,7 +76,7 @@ Rental listings published by admins, landlords, or agencies.
 | `rooms` | `int` | Room count |
 | `type` | `text` | Maison, Appartement, Villa, Studio |
 | `status` | `house_status` | Defaults to `Disponible` |
-| `publication_status` | `publication_status` | New listings default to `en_attente` |
+| `is_valid` | `boolean` | Defaults to `false`; changed to `true` when an administrator validates the listing |
 | `publication_reviewed_at` | `timestamptz` | Last moderation decision |
 | `publication_reviewed_by` | `uuid` | Administrator who reviewed the listing |
 | `publication_rejection_reason` | `text` | Required for a rejection |

@@ -363,7 +363,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="space-y-4">
         <div className="grid gap-3 rounded-2xl border border-white/70 bg-white p-4 shadow-card sm:grid-cols-3">
           <div>
@@ -380,7 +380,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
           </div>
         </div>
 
-        <div className={`contract-print-area contract-paper relative overflow-hidden rounded-2xl border border-white/70 bg-white p-5 shadow-card md:p-8 ${canPrintContract ? "" : "print-locked"}`}>
+        <div className={`contract-print-area contract-paper relative min-w-0 overflow-hidden rounded-2xl border border-white/70 bg-white p-4 shadow-card min-[390px]:p-5 md:p-8 ${canPrintContract ? "" : "print-locked"}`}>
           <div className="mb-4 ml-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-center text-[9px] font-black seal sm:absolute sm:right-5 sm:top-5 sm:mb-0 sm:h-20 sm:w-20 md:h-24 md:w-24 md:text-xs">
             SCEAU<br />BAILCONNECT
           </div>
@@ -399,7 +399,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
               suppressContentEditableWarning
               onInput={() => setEditorDirty(true)}
               onPaste={pastePlainText}
-              className={`max-w-xl whitespace-pre-wrap px-2 py-1 text-2xl font-black uppercase leading-tight text-slate-950 ${editableClass(canEditContract)}`}
+              className={`max-w-xl break-words whitespace-pre-wrap px-1 py-1 text-xl font-black uppercase leading-tight text-slate-950 min-[390px]:px-2 min-[390px]:text-2xl ${editableClass(canEditContract)}`}
             >
               {editorTitle}
             </h2>
@@ -411,7 +411,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
               suppressContentEditableWarning
               onInput={() => setEditorDirty(true)}
               onPaste={pastePlainText}
-              className={`min-h-[320px] whitespace-pre-wrap px-2 py-1 leading-8 text-slate-700 ${editableClass(canEditContract)}`}
+              className={`min-h-[320px] break-words whitespace-pre-wrap px-1 py-1 leading-7 text-slate-700 min-[390px]:px-2 min-[390px]:leading-8 ${editableClass(canEditContract)}`}
             >
               {editorBody}
             </div>
@@ -582,7 +582,7 @@ export function ContractWorkspace({ requestedHouseId, house, contract }: Contrac
       </aside>
       {terminationOpen && contractState && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="termination-title">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-soft">
+          <div className="safe-modal-panel w-full max-w-lg rounded-2xl bg-white p-4 shadow-soft sm:p-5">
             <h2 id="termination-title" className="text-xl font-black">Résilier le contrat</h2>
             <p className="mt-2 text-sm text-muted">
               Une date future programmera la résiliation. Un administrateur devra la finaliser à l’échéance.

@@ -58,7 +58,7 @@ export function LeafletLocationPicker({
   const zoom = value ? 16 : suggestedCenter ? 14 : 12;
 
   return (
-    <MapContainer center={[center.lat, center.lng]} zoom={zoom} scrollWheelZoom className="h-[360px] w-full rounded-2xl">
+    <MapContainer center={[center.lat, center.lng]} zoom={zoom} scrollWheelZoom className="h-[280px] w-full rounded-2xl min-[390px]:h-[320px] sm:h-[360px]">
       <RecenterMap center={center} zoom={zoom} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -101,7 +101,7 @@ export function LeafletHousesMap({ houses, getHouseHref }: { houses: House[]; ge
   }, [housesWithCoords]);
 
   return (
-    <MapContainer center={center} zoom={housesWithCoords.length ? 12 : 11} scrollWheelZoom className="h-[420px] w-full rounded-2xl">
+    <MapContainer center={center} zoom={housesWithCoords.length ? 12 : 11} scrollWheelZoom className="h-[300px] w-full rounded-2xl min-[390px]:h-[360px] md:h-[420px]">
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -109,7 +109,7 @@ export function LeafletHousesMap({ houses, getHouseHref }: { houses: House[]; ge
       {housesWithCoords.map(house => (
         <Marker key={house.id} position={[house.latitude, house.longitude]} icon={markerIcon(toneForStatus(house.status))}>
           <Popup>
-            <div className="min-w-48">
+            <div className="w-44 max-w-full sm:w-48">
               <p className="font-bold">{house.title}</p>
               <p>{house.district ? `${house.district}, ` : ""}{house.commune}, {house.city}</p>
               <p>{money(house.price)}</p>

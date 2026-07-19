@@ -49,9 +49,13 @@ function DistributionChart({ items, total }: { items: DistributionItem[]; total:
 export function AdminOverview({ data }: { data: AppData }) {
   const agreedContracts = data.contracts.filter(contract => contract.agreedByOwnerAt && contract.agreedByTenantAt).length;
   const archivedHouses = data.houses.filter(house => house.isArchived).length;
-  const pendingPublications = data.houses.filter(house => house.publicationStatus === "en_attente").length;
-  const rejectedPublications = data.houses.filter(house => house.publicationStatus === "rejetee").length;
-  const validatedPublications = data.houses.filter(house => house.publicationStatus === "validee" && !house.isArchived).length;
+  const pendingPublications = data.houses.filter(
+    house => !house.isValid && !house.isArchived && !house.publicationRejectionReason
+  ).length;
+  const rejectedPublications = data.houses.filter(
+    house => !house.isValid && !house.isArchived && Boolean(house.publicationRejectionReason)
+  ).length;
+  const validatedPublications = data.houses.filter(house => house.isValid && !house.isArchived).length;
 
   const metrics = [
     {

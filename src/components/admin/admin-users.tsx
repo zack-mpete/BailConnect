@@ -31,7 +31,7 @@ export function AdminUsers({ users, roles, onRoleChange }: { users: AppUser[]; r
           </span>
         ))}
       </div>
-      <div className="mt-4 grid max-h-[calc(100vh-220px)] gap-3 overflow-y-auto pr-1 scrollbar-soft">
+      <div className="mt-4 grid gap-3 lg:max-h-[calc(100dvh-220px)] lg:overflow-y-auto lg:pr-1 scrollbar-soft">
         {users.map(appUser => (
           <div key={appUser.id} className="grid gap-3 rounded-2xl border border-slate-100 bg-gradient-to-r from-white to-slate-50 p-4 transition hover:border-cyan-200 hover:shadow-card md:grid-cols-[1fr_220px] md:items-center">
             <div className="flex min-w-0 items-center gap-3">

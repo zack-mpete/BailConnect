@@ -73,6 +73,7 @@ Pour une base existante, appliquer dans Supabase SQL Editor, dans cet ordre :
 supabase/migrations/202607170002_moderation_requests_termination_schema.sql
 supabase/migrations/202607170003_moderation_requests_termination_workflows.sql
 supabase/migrations/202607180001_archiving_and_contract_role_restrictions.sql
+supabase/migrations/202607190001_replace_publication_status_with_is_valid.sql
 ```
 
 Puis exécuter le contrôle en lecture seule :
@@ -80,6 +81,7 @@ Puis exécuter le contrôle en lecture seule :
 ```txt
 supabase/verify/202607170003_workflows.sql
 supabase/verify/202607180001_archiving_and_roles.sql
+supabase/verify/202607190001_validation_boolean.sql
 ```
 
 ## Pages incluses

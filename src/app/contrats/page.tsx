@@ -14,10 +14,10 @@ export default async function ContractsPage({ searchParams }: { searchParams: Pr
   return (
     <main className="pb-16">
       <Navbar />
-      <section className="mx-auto max-w-7xl px-4 py-6 md:px-6">
+      <section className="mx-auto max-w-7xl px-3 py-5 min-[360px]:px-4 md:px-6 md:py-6">
         <RoleGate allow={["admin", "bailleur", "agence", "locataire"]} fallbackText="Connecte-toi pour preparer ou consulter un contrat.">
           <div className="mb-5">
-            <h1 className="text-3xl font-black">Contrat de bail</h1>
+            <h1 className="text-2xl font-black min-[390px]:text-3xl">Contrat de bail</h1>
             <p className="mt-2 text-sm text-muted">Verifie le bail, valide l'accord et garde la conversation au meme endroit.</p>
           </div>
           <ContractWorkspace requestedHouseId={houseId || null} house={house} contract={contract} />

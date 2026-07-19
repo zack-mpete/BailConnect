@@ -1,5 +1,4 @@
 export type Role = "admin" | "bailleur" | "agence" | "locataire";
-export type PublicationStatus = "en_attente" | "validee" | "rejetee";
 export type RentalRequestStatus = "en_attente" | "approuvee" | "rejetee" | "annulee";
 export type ContractStatus =
   | "brouillon"
@@ -39,7 +38,7 @@ export type House = {
   rooms: number;
   type: string;
   status: "Disponible" | "Réservé" | "Loué" | "Archivé";
-  publicationStatus: PublicationStatus;
+  isValid: boolean;
   publicationReviewedAt?: string | null;
   publicationReviewedBy?: string | null;
   publicationRejectionReason?: string | null;

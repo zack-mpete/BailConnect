@@ -29,7 +29,7 @@ type HouseRow = {
   rooms: number;
   type: string;
   status: House["status"];
-  publication_status: House["publicationStatus"];
+  is_valid: boolean;
   publication_reviewed_at?: string | null;
   publication_reviewed_by?: string | null;
   publication_rejection_reason?: string | null;
@@ -72,7 +72,7 @@ async function getFallbackData(): Promise<AppData> {
     ...mock,
     houses: mock.houses.map(house => ({
       ...house,
-      publicationStatus: house.publicationStatus || "validee",
+      isValid: house.isValid ?? true,
       isArchived: house.isArchived || false
     })),
     roles: [],
@@ -118,16 +118,16 @@ export function toHouse(row: HouseRow, usersById: Map<string, string> = new Map(
     rooms: row.rooms,
     type: row.type,
     status: row.status,
-    publicationStatus: row.publication_status,
+    isValid: row.is_valid,
     publicationReviewedAt: row.publication_reviewed_at || null,
     publicationReviewedBy: row.publication_reviewed_by || null,
     publicationRejectionReason: row.publication_rejection_reason || null,
     isArchived: row.is_archived,
     archivedAt: row.archived_at || null,
     archivedBy: row.archived_by || null,
-    currentTenantId: null,
+    currentTenantId: row.current_tenant_id || null,
     currentTenant: null,
-    currentContractId: null,
+    currentContractId: row.current_contract_id || null,
     owner,
     agency: "",
     image: row.image_url || fallbackImage,
@@ -162,8 +162,8 @@ export async function getAppData(): Promise<AppData> {
     client.from("users").select("id,full_name"),
     client
       .from("houses")
-      .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,publication_status,is_archived,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
-      .eq("publication_status", "validee")
+      .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,is_valid,is_archived,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+      .eq("is_valid", true)
       .eq("is_archived", false)
       .eq("status", "Disponible")
       .order("created_at", { ascending: false })
@@ -175,12 +175,20 @@ export async function getAppData(): Promise<AppData> {
 
   const [rolesResult, usersResult, housesResult] = results;
 
-  if (housesResult.error || rolesResult.error) {
+  if (housesResult.error) {
+    console.error("[data] Chargement du catalogue public impossible.", {
+      code: housesResult.error.code,
+      error: housesResult.error.message
+    });
     return emptyData();
   }
 
-  const roles = ((rolesResult.data || []) as RoleRow[]).map(toRole);
-  const usersById = new Map(((usersResult.data || []) as UserRow[]).map(user => [user.id, user.full_name]));
+  const roles = rolesResult.error ? [] : ((rolesResult.data || []) as RoleRow[]).map(toRole);
+  const usersById = new Map(
+    usersResult.error
+      ? []
+      : ((usersResult.data || []) as UserRow[]).map(user => [user.id, user.full_name])
+  );
   const houses = ((housesResult.data || []) as HouseRow[]).map(row => toHouse(row, usersById));
 
   return {
@@ -203,24 +211,37 @@ export async function getHouses() {
   return data.houses;
 }
 
-export async function getHouse(id: string) {
-  const houses = await getHouses();
-  const listedHouse = houses.find(house => house.id === id);
-  if (listedHouse) return listedHouse;
+export async function getHouse(id: string, accessToken?: string) {
+  if (!accessToken) {
+    const houses = await getHouses();
+    const listedHouse = houses.find(house => house.id === id);
+    if (listedHouse) return listedHouse;
+  }
 
   // A real Supabase identifier can be opened while the catalog still uses
   // mock data locally. Querying the requested row prevents a valid detail URL
   // from being turned into a Next.js 404 only because it is absent from mock.
   if (!isSupabaseConfigured) return null;
 
-  const client = createPublicSupabaseClient();
+  const client = createPublicSupabaseClient(accessToken);
   if (!client) return null;
+
+  if (accessToken) {
+    const { data, error } = await client
+      .from("houses")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return toHouse(data as HouseRow);
+  }
 
   const { data, error } = await client
     .from("houses")
-    .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,publication_status,is_archived,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
+    .select("id,owner_id,title,description,city,commune,district,address,latitude,longitude,price,rooms,type,status,is_valid,is_archived,image_url,features,contract_duration_months,contract_deposit,contract_payment_terms,contract_special_terms,contract_title,contract_body,created_at")
     .eq("id", id)
-    .eq("publication_status", "validee")
+    .eq("is_valid", true)
     .eq("is_archived", false)
     .eq("status", "Disponible")
     .maybeSingle();

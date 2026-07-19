@@ -1,9 +1,15 @@
 -- Read-only verification after the two workflow migrations.
 
 select
-  count(*) filter (where publication_status = 'en_attente') as publications_en_attente,
-  count(*) filter (where publication_status = 'validee') as publications_validees,
-  count(*) filter (where publication_status = 'rejetee') as publications_rejetees
+  count(*) filter (
+    where not is_valid
+      and publication_rejection_reason is null
+  ) as publications_en_attente,
+  count(*) filter (where is_valid) as publications_validees,
+  count(*) filter (
+    where not is_valid
+      and publication_rejection_reason is not null
+  ) as publications_rejetees
 from public.houses;
 
 select status, count(*)

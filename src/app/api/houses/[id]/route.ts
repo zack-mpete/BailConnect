@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError, getApiClient } from "@/app/api/_supabase";
+import { apiError, getApiClient, getBearerToken } from "@/app/api/_supabase";
 import { notifyUsers } from "@/app/api/_notifications";
 import { getHouse } from "@/lib/data";
 
@@ -72,9 +72,9 @@ function parseOptionalAmount(value: unknown) {
   return Number.isFinite(amount) && amount >= 0 ? amount : undefined;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const house = await getHouse(id);
+  const house = await getHouse(id, getBearerToken(req));
 
   if (!house) {
     return NextResponse.json({ error: "Maison introuvable." }, { status: 404 });
@@ -140,7 +140,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   let patch: Record<string, unknown>;
   if (action === "approve" || action === "validate") {
     patch = {
-      publication_status: "validee",
+      is_valid: true,
       publication_reviewed_at: new Date().toISOString(),
       publication_reviewed_by: authData.user?.id || null,
       publication_rejection_reason: null
@@ -149,7 +149,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const reason = optionalText(body.reason);
     if (!reason || reason.length < 3) return apiError("Le motif du rejet est requis.");
     patch = {
-      publication_status: "rejetee",
+      is_valid: false,
       publication_reviewed_at: new Date().toISOString(),
       publication_reviewed_by: authData.user?.id || null,
       publication_rejection_reason: reason

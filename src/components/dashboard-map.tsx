@@ -11,7 +11,7 @@ import type { House } from "@/types";
 
 const LeafletHousesMap = dynamic(() => import("@/components/leaflet-maps").then(mod => mod.LeafletHousesMap), {
   ssr: false,
-  loading: () => <div className="flex h-[420px] items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-muted">Chargement de la carte...</div>
+  loading: () => <div className="flex h-[300px] items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-muted min-[390px]:h-[360px] md:h-[420px]">Chargement de la carte...</div>
 });
 
 function hasCoords(house: House) {

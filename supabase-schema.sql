@@ -10,13 +10,6 @@ end $$;
 
 do $$
 begin
-  create type publication_status as enum ('en_attente', 'validee', 'rejetee');
-exception
-  when duplicate_object then null;
-end $$;
-
-do $$
-begin
   create type house_status as enum ('Disponible', 'Réservé', 'Loué');
 exception
   when duplicate_object then null;
@@ -248,7 +241,7 @@ create table if not exists houses (
   rooms int not null,
   type text not null,
   status house_status not null default 'Disponible',
-  publication_status publication_status not null default 'en_attente',
+  is_valid boolean not null default false,
   publication_reviewed_at timestamptz,
   publication_reviewed_by uuid,
   publication_rejection_reason text,
@@ -274,7 +267,7 @@ alter table houses add column if not exists latitude double precision;
 alter table houses add column if not exists longitude double precision;
 alter table houses add column if not exists current_tenant_id uuid;
 alter table houses add column if not exists current_contract_id uuid;
-alter table houses add column if not exists publication_status publication_status not null default 'en_attente';
+alter table houses add column if not exists is_valid boolean not null default false;
 alter table houses add column if not exists publication_reviewed_at timestamptz;
 alter table houses add column if not exists publication_reviewed_by uuid;
 alter table houses add column if not exists publication_rejection_reason text;
@@ -666,7 +659,7 @@ grant select (
   rooms,
   type,
   status,
-  publication_status,
+  is_valid,
   is_archived,
   image_url,
   features,
@@ -726,9 +719,68 @@ create policy "users_admin_update" on users for update
 using (public.current_user_is_admin())
 with check (public.current_user_is_admin());
 
+create or replace function public.guard_house_validation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  public_fields_changed boolean;
+begin
+  if public.current_user_is_admin() then
+    new.contract_duration_months := old.contract_duration_months;
+    new.contract_deposit := old.contract_deposit;
+    new.contract_payment_terms := old.contract_payment_terms;
+    new.contract_special_terms := old.contract_special_terms;
+    new.contract_title := old.contract_title;
+    new.contract_body := old.contract_body;
+    return new;
+  end if;
+
+  new.is_valid := old.is_valid;
+  new.is_archived := old.is_archived;
+  new.archived_at := old.archived_at;
+  new.archived_by := old.archived_by;
+
+  public_fields_changed :=
+    new.title is distinct from old.title
+    or new.description is distinct from old.description
+    or new.city is distinct from old.city
+    or new.commune is distinct from old.commune
+    or new.district is distinct from old.district
+    or new.address is distinct from old.address
+    or new.latitude is distinct from old.latitude
+    or new.longitude is distinct from old.longitude
+    or new.price is distinct from old.price
+    or new.rooms is distinct from old.rooms
+    or new.type is distinct from old.type
+    or new.image_url is distinct from old.image_url
+    or new.features is distinct from old.features;
+
+  if public_fields_changed then
+    new.is_valid := false;
+    new.publication_reviewed_at := null;
+    new.publication_reviewed_by := null;
+    new.publication_rejection_reason := null;
+  else
+    new.publication_reviewed_at := old.publication_reviewed_at;
+    new.publication_reviewed_by := old.publication_reviewed_by;
+    new.publication_rejection_reason := old.publication_rejection_reason;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists houses_guard_validation on houses;
+create trigger houses_guard_validation
+before update on houses
+for each row execute function public.guard_house_validation();
+
 drop policy if exists "houses_public_read" on houses;
 create policy "houses_public_read" on houses for select using (
-  (publication_status = 'validee' and not is_archived and status = 'Disponible')
+  (is_valid and not is_archived and status = 'Disponible')
   or auth.uid() = owner_id
   or auth.uid() = current_tenant_id
   or public.current_user_is_admin()
@@ -736,6 +788,9 @@ create policy "houses_public_read" on houses for select using (
 drop policy if exists "houses_owner_insert" on houses;
 create policy "houses_owner_insert" on houses for insert with check (
   auth.uid() = owner_id
+  and not is_valid
+  and publication_reviewed_at is null
+  and publication_reviewed_by is null
   and exists (
     select 1
     from users

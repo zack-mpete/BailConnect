@@ -237,9 +237,9 @@ export default function AddHousePage() {
 
   return (
     <main className="pb-24 md:pb-0"><Navbar />
-      <section className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+      <section className="mx-auto max-w-5xl px-3 py-6 min-[360px]:px-4 md:px-6 md:py-8">
         <RoleGate allow={["admin", "bailleur", "agence"]} fallbackText="Seuls les bailleurs, agences et administrateurs peuvent publier une annonce.">
-          <h1 className="text-3xl font-black">Ajouter une maison</h1>
+          <h1 className="text-2xl font-black min-[390px]:text-3xl">Ajouter une maison</h1>
           <p className="mt-2 text-muted">L’annonce sera visible publiquement après validation par un administrateur.</p>
           <form onSubmit={submit} className="mt-6 grid gap-5 lg:grid-cols-[1fr_.75fr]">
             <Card className="space-y-4">
@@ -280,7 +280,7 @@ export default function AddHousePage() {
                 <label className="block text-sm font-bold">Pièces<input name="rooms" required type="number" min="1" className="mt-2 form-control" placeholder="4" /></label>
                 <label className="block text-sm font-bold">Type<select name="type" className="mt-2 form-control"><option>Maison</option><option>Appartement</option><option>Villa</option><option>Studio</option></select></label>
               </div>
-              <label className="block text-sm font-bold">Image<input name="image" type="file" accept="image/*" className="mt-2 form-control file:mr-4 file:rounded-full file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-bold file:text-brand-700" /></label>
+              <label className="block text-sm font-bold">Image<input name="image" type="file" accept="image/*" className="mt-2 form-control text-xs file:mr-2 file:rounded-full file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-brand-700 sm:text-sm sm:file:mr-4 sm:file:px-4 sm:file:text-sm" /></label>
               <label className="block text-sm font-bold">Équipements<input name="features" className="mt-2 form-control" placeholder="Parking, Jardin, Sécurité" /></label>
               <label className="block text-sm font-bold">Description<textarea name="description" required rows={5} className="mt-2 form-control" placeholder="Décrire la maison, le quartier et les avantages..." /></label>
               <div className="soft-panel">

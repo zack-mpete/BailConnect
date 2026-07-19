@@ -183,7 +183,7 @@ export function OwnerPaymentPanel({ activeContract, house, payments, onPaymentCr
 
         <button
           disabled={savingPayment || !activeContract}
-          className="inline-flex w-fit items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-bold text-white disabled:opacity-50 sm:w-fit"
         >
           <Save size={16} /> {savingPayment ? "Enregistrement..." : "Enregistrer le paiement"}
         </button>
@@ -193,12 +193,12 @@ export function OwnerPaymentPanel({ activeContract, house, payments, onPaymentCr
         <h3 className="text-sm font-black uppercase text-muted">Historique</h3>
         <div className="mt-3 grid gap-2">
           {payments.map(payment => (
-            <div key={payment.id} className="grid gap-2 soft-panel text-sm md:grid-cols-[1fr_120px] md:items-center">
-              <div>
-                <p className="font-black">{payment.occupantName} - {payment.period}</p>
-                <p className="text-muted">{payment.method}{payment.reference ? ` - ${payment.reference}` : ""}</p>
+            <div key={payment.id} className="grid min-w-0 gap-2 soft-panel text-sm md:grid-cols-[1fr_120px] md:items-center">
+              <div className="min-w-0">
+                <p className="break-words font-black">{payment.occupantName} - {payment.period}</p>
+                <p className="break-words text-muted">{payment.method}{payment.reference ? ` - ${payment.reference}` : ""}</p>
               </div>
-              <p className="font-black md:text-right">{money(payment.amount)}</p>
+              <p className="break-words font-black md:text-right">{money(payment.amount)}</p>
             </div>
           ))}
 

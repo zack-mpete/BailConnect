@@ -209,6 +209,14 @@ function DashboardWelcome({
 function PaymentsView({ role, contracts, payments, houses, user }: { role: Exclude<Role, "admin">; contracts: Contract[]; payments: Payment[]; houses: House[]; user: { id: string; role: Role } }) {
   const contractByHouse = new globalThis.Map(contracts.map(contract => [contract.houseId, contract]));
   const houseById = new globalThis.Map(houses.map(house => [house.id, house]));
+  const paymentHref = (payment: Payment) => {
+    const house = houseById.get(payment.houseId);
+    return house
+      ? houseDetailHref(house, user, "payments")
+      : role === "locataire"
+        ? housePublicHref(payment.houseId)
+        : houseManagerHref(payment.houseId, "payments");
+  };
 
   return (
     <div className="surface-card">
@@ -219,7 +227,39 @@ function PaymentsView({ role, contracts, payments, houses, user }: { role: Exclu
         </div>
         <Badge>{payments.length} paiement(s)</Badge>
       </div>
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 grid gap-3 md:hidden">
+        {payments.map(payment => {
+          const contract = contractByHouse.get(payment.houseId);
+          return (
+            <article key={payment.id} className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words font-black">{payment.houseTitle || contract?.seal || payment.houseId}</p>
+                  <p className="mt-1 truncate text-sm text-muted">{payment.occupantName}</p>
+                </div>
+                <Badge>{payment.method}</Badge>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-xl bg-white p-3">
+                  <p className="text-xs font-bold text-muted">Montant</p>
+                  <p className="mt-1 break-words font-black">{money(payment.amount)}</p>
+                </div>
+                <div className="rounded-xl bg-white p-3">
+                  <p className="text-xs font-bold text-muted">Période</p>
+                  <p className="mt-1 break-words font-black">{payment.period}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-2 min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
+                <p className="text-xs font-semibold text-muted">{formatPaymentDate(payment.paidAt)}</p>
+                <Link href={paymentHref(payment)} className="inline-flex justify-center rounded-full bg-brand-50 px-4 py-2 text-xs font-black text-brand-700">
+                  Voir le bien
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="mt-4 hidden overflow-x-auto md:block">
         <table className="w-full min-w-[840px] text-left text-sm">
           <thead className="text-xs uppercase text-muted">
             <tr>
@@ -235,12 +275,6 @@ function PaymentsView({ role, contracts, payments, houses, user }: { role: Exclu
           <tbody>
             {payments.map(payment => {
               const contract = contractByHouse.get(payment.houseId);
-              const house = houseById.get(payment.houseId);
-              const href = house
-                ? houseDetailHref(house, user, "payments")
-                : role === "locataire"
-                  ? housePublicHref(payment.houseId)
-                  : houseManagerHref(payment.houseId, "payments");
               return (
                 <tr key={payment.id} className="border-t border-slate-100">
                   <td className="px-3 py-3 font-bold">{payment.houseTitle || contract?.seal || payment.houseId}</td>
@@ -249,18 +283,18 @@ function PaymentsView({ role, contracts, payments, houses, user }: { role: Exclu
                   <td className="px-3 py-3 font-black">{money(payment.amount)}</td>
                   <td className="px-3 py-3">{formatPaymentDate(payment.paidAt)}</td>
                   <td className="px-3 py-3"><Badge>{payment.method}</Badge></td>
-                  <td className="px-3 py-3"><Link href={href} className="text-xs font-bold text-brand-700">Voir le bien</Link></td>
+                  <td className="px-3 py-3"><Link href={paymentHref(payment)} className="text-xs font-bold text-brand-700">Voir le bien</Link></td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {!payments.length && <p className="rounded-xl bg-slate-50 p-4 text-sm font-semibold text-muted">Aucun paiement enregistré pour le moment.</p>}
       </div>
+      {!payments.length && <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-muted">Aucun paiement enregistré pour le moment.</p>}
       {role !== "locataire" && Boolean(contracts.length) && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
           {contracts.slice(0, 4).map(contract => (
-            <Link key={contract.id} href={houseManagerHref(contract.houseId, "payments")} className="inline-flex rounded-full bg-brand-50 px-4 py-2 text-xs font-black text-brand-700">
+            <Link key={contract.id} href={houseManagerHref(contract.houseId, "payments")} className="inline-flex justify-center rounded-full bg-brand-50 px-4 py-2 text-center text-xs font-black text-brand-700">
               Enregistrer pour {contract.tenant}
             </Link>
           ))}
@@ -303,10 +337,10 @@ function PropertiesView({ role, houses, user }: { role: Exclude<Role, "admin">; 
               </div>
               <Badge tone={house.status === "Disponible" ? "success" : "warn"}>{house.status}</Badge>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-              <div className="soft-tile"><p className="text-muted">Loyer</p><p className="font-black">{money(house.price)}</p></div>
+            <div className="mt-4 grid gap-2 text-sm min-[360px]:grid-cols-3">
+              <div className="soft-tile min-w-0"><p className="text-muted">Loyer</p><p className="break-words font-black">{money(house.price)}</p></div>
               <div className="soft-tile"><p className="text-muted">Pièces</p><p className="font-black">{house.rooms}</p></div>
-              <div className="soft-tile"><p className="text-muted">Type</p><p className="font-black">{house.type}</p></div>
+              <div className="soft-tile min-w-0"><p className="text-muted">Type</p><p className="break-words font-black">{house.type}</p></div>
             </div>
             {role !== "locataire" && (
               <div className="mt-3 soft-tile text-sm">
@@ -333,13 +367,13 @@ function ContractsView({ role, contracts, houses }: { role: Exclude<Role, "admin
       <h2 className="text-xl font-black">{role === "locataire" ? "Mes contrats" : "Contrats et locataires"}</h2>
       <div className="mt-4 grid gap-3">
         {contracts.map(contract => (
-          <div key={contract.id} className="grid gap-3 soft-panel md:grid-cols-[1fr_220px] md:items-center">
-            <div>
-              <p className="font-black">{contract.seal}</p>
-              <p className="text-sm text-muted">{contract.owner} / {contract.tenant}</p>
+          <div key={contract.id} className="grid min-w-0 gap-3 soft-panel md:grid-cols-[1fr_220px] md:items-center">
+            <div className="min-w-0">
+              <p className="break-words font-black">{contract.seal}</p>
+              <p className="break-words text-sm text-muted">{contract.owner} / {contract.tenant}</p>
               <p className="mt-1 text-xs text-muted">Début {contract.startDate} - {contract.duration}</p>
             </div>
-            <div className="flex flex-wrap gap-2 md:justify-end">
+            <div className="flex min-w-0 flex-col items-start gap-2 min-[390px]:flex-row min-[390px]:flex-wrap md:justify-end">
               <Badge>{CONTRACT_STATUS_LABELS[contract.status]}</Badge>
               <Link
                 href={houseById.has(contract.houseId)
@@ -388,17 +422,17 @@ function MessagesView({ role, contracts }: { role: Exclude<Role, "admin">; contr
         </div>
         <Badge>{contracts.length} conversation(s)</Badge>
       </div>
-      <div className="grid min-h-[420px] xl:grid-cols-[320px_1fr]">
+      <div className="grid min-h-0 xl:min-h-[420px] xl:grid-cols-[320px_1fr]">
         <div className="border-b border-slate-100 bg-white p-3 xl:border-b-0 xl:border-r">
           <div className="mb-3 px-2">
             <p className="text-xs font-black uppercase text-muted">Conversations</p>
           </div>
-          <div className="grid max-h-[calc(100vh-260px)] content-start gap-1 overflow-y-auto scrollbar-soft">
+          <div className="flex snap-x gap-2 overflow-x-auto pb-1 scrollbar-soft xl:grid xl:max-h-[calc(100dvh-260px)] xl:content-start xl:gap-1 xl:overflow-x-visible xl:overflow-y-auto xl:pb-0">
           {contracts.map(contract => {
             const active = selectedContract?.id === contract.id;
             const name = role === "locataire" ? contract.owner : contract.tenant;
             return (
-              <button key={contract.id} onClick={() => setSelectedContractId(contract.id)} className={`flex items-center gap-3 rounded-2xl p-3 text-left transition ${active ? "bg-brand-50" : "hover:bg-slate-50"}`}>
+              <button key={contract.id} onClick={() => setSelectedContractId(contract.id)} className={`flex min-w-[240px] snap-start items-center gap-3 rounded-2xl p-3 text-left transition xl:min-w-0 ${active ? "bg-brand-50" : "bg-slate-50 hover:bg-slate-100 xl:bg-transparent"}`}>
                 <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black ${active ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-700"}`}>
                   {initials(name)}
                 </span>
@@ -504,7 +538,7 @@ export function UserDashboard({ data }: { data: AppData }) {
   if (!user || !role || !meta) return null;
 
   return (
-    <section className="rounded-2xl bg-gradient-to-br from-slate-100 via-cyan-50/60 to-white p-2 md:p-3 lg:h-[calc(100vh-104px)] lg:overflow-hidden">
+    <section className="min-w-0 rounded-2xl bg-gradient-to-br from-slate-100 via-cyan-50/60 to-white p-1.5 min-[360px]:p-2 md:p-3 lg:h-[calc(100dvh-104px)] lg:overflow-hidden">
       <div className="grid gap-3 lg:h-full lg:grid-cols-[280px_1fr]">
         <aside className="rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900 to-cyan-950 p-4 text-white shadow-soft lg:h-full lg:overflow-y-auto lg:overscroll-contain scrollbar-soft">
           <div>
@@ -512,9 +546,9 @@ export function UserDashboard({ data }: { data: AppData }) {
             <h2 className="mt-1 text-xl font-black">{meta.title}</h2>
             <p className="mt-2 text-xs leading-5 text-white/50">{user.fullName}</p>
           </div>
-          <nav className="mt-6 flex gap-2 overflow-x-auto pb-2 scrollbar-soft lg:grid lg:overflow-visible lg:pb-0">
+          <nav className="mt-6 flex snap-x gap-2 overflow-x-auto pb-2 scrollbar-soft lg:grid lg:overflow-visible lg:pb-0">
             {meta.nav.map(({ id, label, description, Icon }) => (
-              <button key={id} type="button" aria-pressed={section === id} onClick={() => selectSection(id)} className={`flex min-w-[190px] items-center gap-3 rounded-2xl p-3 text-left transition lg:min-w-0 ${section === id ? "bg-white text-ink shadow-card" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
+              <button key={id} type="button" aria-pressed={section === id} onClick={() => selectSection(id)} className={`flex min-w-[172px] snap-start items-center gap-3 rounded-2xl p-3 text-left transition min-[390px]:min-w-[190px] lg:min-w-0 ${section === id ? "bg-white text-ink shadow-card" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${section === id ? "bg-brand-50 text-brand-700" : "bg-white/10"}`}><Icon size={18} /></span>
                 <span className="min-w-0">
                   <span className="block text-sm font-black">{label}</span>

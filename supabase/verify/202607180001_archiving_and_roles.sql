@@ -5,7 +5,7 @@ select
   count(*) filter (where is_archived and status = 'Loué') as archived_rented_houses,
   count(*) filter (
     where not is_archived
-      and publication_status = 'validee'
+      and is_valid
       and status = 'Disponible'
   ) as public_catalog_houses
 from public.houses;

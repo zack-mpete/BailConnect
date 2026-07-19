@@ -13,7 +13,7 @@ export default async function DashboardHousePage({ params }: { params: Promise<{
   return (
     <main className="pb-24 md:pb-0">
       <Navbar />
-      <section className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <section className="mx-auto max-w-7xl px-3 py-6 min-[360px]:px-4 md:px-6 md:py-8">
         <OwnerHouseWorkspace houseId={id} house={house} contracts={contracts} payments={payments} />
       </section>
     </main>
